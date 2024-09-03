@@ -60,6 +60,7 @@ func (g *ProcessorL1SequenceBatchesElderberry) Process(ctx context.Context, orde
 	sbatch := l1Block.SequencedBatches[order.Pos][0]
 
 	executionTime := l1Block.ReceivedAt
+	log.Warnf("elderberry execution time: %v", executionTime)
 	if sbatch.SequencedBatchElderberryData == nil {
 		log.Warnf("No elderberry sequenced batch data for batch %d", sbatch.BatchNumber)
 	} else {

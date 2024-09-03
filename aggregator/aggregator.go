@@ -272,7 +272,7 @@ func (a *Aggregator) sendFinalProof() {
 				a.endProofVerification()
 				continue
 			}
-
+			// Rollback - Final Proof
 			inputs := ethmanTypes.FinalProofInputs{
 				FinalProof:       msg.finalProof,
 				NewLocalExitRoot: finalBatch.LocalExitRoot.Bytes(),

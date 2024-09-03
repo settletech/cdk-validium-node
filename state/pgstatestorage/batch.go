@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/0xPolygonHermez/zkevm-node/hex"
+	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/0xPolygonHermez/zkevm-node/state"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jackc/pgx/v4"
@@ -407,7 +408,11 @@ func scanBatch(row pgx.Row) (state.Batch, error) {
 		&resourcesData,
 		&wip,
 	)
+
+	//log.Info("scanBatch BatchNumber: %v, aihStr: %v, ForceBatchNum: %v, Timestamp: %v", batch.BatchNumber, aihStr, batch.ForcedBatchNum, batch.Timestamp)
+
 	if err != nil {
+		log.Error("scanBatch Error: %v", err)
 		return batch, err
 	}
 	batch.GlobalExitRoot = common.HexToHash(gerStr)
@@ -640,6 +645,8 @@ func (p *PostgresStorage) CloseBatchInStorage(ctx context.Context, receipt state
 	if err != nil {
 		return err
 	}
+
+	log.Info("CloseBatchInStorage AccInputHash: %v, Closing: %v, Batch Number: %v", receipt.AccInputHash, receipt.ClosingReason, receipt.BatchNumber)
 	_, err = e.Exec(ctx, closeBatchSQL, receipt.StateRoot.String(), receipt.LocalExitRoot.String(),
 		receipt.AccInputHash.String(), receipt.BatchL2Data, string(batchResourcesJsonBytes), receipt.ClosingReason, receipt.BatchNumber)
 
@@ -672,8 +679,10 @@ func (p *PostgresStorage) GetWIPBatchInStorage(ctx context.Context, batchNumber 
 	batch, err := scanBatch(row)
 
 	if errors.Is(err, pgx.ErrNoRows) {
+		log.Info("Error not found: %v", state.ErrNotFound)
 		return nil, state.ErrNotFound
 	} else if err != nil {
+		log.Error("GetWIPBatchInStorage Error: ", err)
 		return nil, err
 	}
 
@@ -851,8 +860,10 @@ func (p *PostgresStorage) GetLastClosedBatch(ctx context.Context, dbTx pgx.Tx) (
 	e := p.getExecQuerier(dbTx)
 	row := e.QueryRow(ctx, getLastClosedBatchSQL)
 	batch, err := scanBatch(row)
-
+	
 	if errors.Is(err, pgx.ErrNoRows) {
+		log.Errorf("Batch.go GetLastClosedBatch: %v", err)
+
 		return nil, state.ErrStateNotSynchronized
 	} else if err != nil {
 		return nil, err

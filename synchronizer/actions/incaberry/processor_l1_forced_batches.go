@@ -34,6 +34,7 @@ func (p *ProcessL1ForcedBatches) Process(ctx context.Context, order etherman.Ord
 	return p.processForcedBatch(ctx, l1Block.ForcedBatches[order.Pos], dbTx)
 }
 
+// Add a forced batch in the forced_batch table.
 func (p *ProcessL1ForcedBatches) processForcedBatch(ctx context.Context, forcedBatch etherman.ForcedBatch, dbTx pgx.Tx) error {
 	// Store forced batch into the db
 	forcedB := state.ForcedBatch{
@@ -45,6 +46,7 @@ func (p *ProcessL1ForcedBatches) processForcedBatch(ctx context.Context, forcedB
 		ForcedAt:          forcedBatch.ForcedAt,
 	}
 	log.Infof("processForcedBatch: Storing forcedBatch. BatchNumber: %d  BlockNumber: %d", forcedBatch.ForcedBatchNumber, forcedBatch.BlockNumber)
+
 	err := p.state.AddForcedBatch(ctx, &forcedB, dbTx)
 	if err != nil {
 		log.Errorf("error storing the forcedBatch in processForcedBatch. BlockNumber: %d", forcedBatch.BlockNumber)

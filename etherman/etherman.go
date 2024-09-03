@@ -1027,7 +1027,8 @@ func (etherMan *Client) BuildTrustedVerifyBatchesTxData(lastVerifiedBatch, newVe
 	}
 
 	const pendStateNum = 0 // TODO hardcoded for now until we implement the pending state feature
-
+	// log.Warnf("Rollback - pendStateNum: %v, lastVerifiedBatch: %v, newVerifiedBatch: %v, newLocalExitRoot: %v, newStateRoot: %v ", pendStateNum, lastVerifiedBatch, newVerifiedBatch, newLocalExitRoot, newStateRoot)
+	
 	tx, err := etherMan.RollupManager.VerifyBatchesTrustedAggregator(
 		&opts,
 		etherMan.RollupID,
@@ -1043,6 +1044,7 @@ func (etherMan *Client) BuildTrustedVerifyBatchesTxData(lastVerifiedBatch, newVe
 		if parsedErr, ok := tryParseError(err); ok {
 			err = parsedErr
 		}
+		log.Warnf("Rollback: Verification failed: %v", err)
 		return nil, nil, err
 	}
 
@@ -1526,6 +1528,8 @@ func (etherMan *Client) verifyBatches(
 	} else if (*blocks)[len(*blocks)-1].BlockHash == vLog.BlockHash && (*blocks)[len(*blocks)-1].BlockNumber == vLog.BlockNumber {
 		(*blocks)[len(*blocks)-1].VerifiedBatches = append((*blocks)[len(*blocks)-1].VerifiedBatches, verifyBatch)
 	} else {
+		log.Infof("Rollback: Error processing verify Batch event %v , BlockNumber: %v", vLog.BlockHash, vLog.BlockNumber)
+
 		log.Error("Error processing verifyBatch event. BlockHash:", vLog.BlockHash, ". BlockNumber: ", vLog.BlockNumber)
 		return fmt.Errorf("error processing verifyBatch event")
 	}

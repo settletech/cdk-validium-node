@@ -171,6 +171,7 @@ func (f *finalizer) closeAndOpenNewWIPBatch(ctx context.Context, closeReason sta
 	// If we will process forced batches after we close the wip batch then we must close the current wip L2 block,
 	// since the processForcedBatches function needs to create new L2 blocks (cannot "reuse" the current wip L2 block if it's empty)
 	if processForcedBatches {
+		log.Debugf("processForcedBatches is true")
 		f.closeWIPL2Block(ctx)
 	}
 
@@ -191,6 +192,8 @@ func (f *finalizer) closeAndOpenNewWIPBatch(ctx context.Context, closeReason sta
 	var err error
 	err = f.closeWIPBatch(ctx)
 	if err != nil {
+		log.Error("Failed to close batch: %v", err)
+
 		return fmt.Errorf("failed to close batch, error: %v", err)
 	}
 
@@ -218,12 +221,15 @@ func (f *finalizer) closeAndOpenNewWIPBatch(ctx context.Context, closeReason sta
 	// Process forced batches
 	if processForcedBatches {
 		lastBatchNumber, stateRoot = f.processForcedBatches(ctx, lastBatchNumber, stateRoot)
+		log.Infof("batch.go processForcedBatches is True and lastBatchNumber is: %d", lastBatchNumber)
 		// We must init/reset the wip L2 block from the state since processForcedBatches can created new L2 blocks
 		f.initWIPL2Block(ctx)
 	}
 
 	f.wipBatch, err = f.openNewWIPBatch(ctx, lastBatchNumber+1, stateRoot)
+	
 	if err != nil {
+		log.Error("openNewWIPBatch() failed ", err)
 		return fmt.Errorf("failed to open new wip batch, error: %v", err)
 	}
 
@@ -249,7 +255,7 @@ func (f *finalizer) openNewWIPBatch(ctx context.Context, batchNumber uint64, sta
 		BatchNumber:    batchNumber,
 		Coinbase:       f.sequencerAddress,
 		Timestamp:      now(),
-		StateRoot:      stateRoot,
+		StateRoot:      stateRoot, // Previous State Root Last Batch
 		GlobalExitRoot: state.ZeroHash,
 		LocalExitRoot:  state.ZeroHash,
 	}
@@ -529,6 +535,7 @@ func getMaxRemainingResources(constraints state.BatchConstraintsCfg) state.Batch
 
 // checkIfFinalizeBatch returns true if the batch must be closed due to a closing reason, also it returns the description of the close reason
 func (f *finalizer) checkIfFinalizeBatch() (bool, state.ClosingReason) {
+
 	// Max txs per batch
 	if f.maxTxsPerBatchReached(f.wipBatch) {
 		log.Infof("closing batch %d, because it reached the maximum number of txs", f.wipBatch.batchNumber)

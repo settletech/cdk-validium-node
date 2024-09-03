@@ -114,9 +114,12 @@ func (s *SequenceSender) tryToSendSequence(ctx context.Context) {
 	}
 
 	// Check if should send sequence to L1
-	log.Infof("getting sequences to send")
+	log.Infof("getting sequences to send...")
 	sequences, err := s.getSequencesToSend(ctx)
+
 	if err != nil || len(sequences) == 0 {
+		log.Errorf("getSequencesToSend failed! %v", err)
+
 		if err != nil {
 			log.Errorf("error getting sequences: %v", err)
 		} else {
@@ -257,8 +260,17 @@ func (s *SequenceSender) getSequencesToSend(ctx context.Context) ([]types.Sequen
 			BatchL2Data: batch.BatchL2Data,
 			BatchNumber: batch.BatchNumber,
 		}
-
+		// ROLLBACK
+		log.Info("Current batch: %d, IsForced: %v", currentBatchNumToSequence, batch.ForcedBatchNum)
+			
 		if batch.ForcedBatchNum != nil {
+			// Rollback Test Code
+			log.Info("Forced: Sequences Length: %v", len(sequences))
+			if len(sequences) > 0 {
+				return sequences, nil
+			}
+			// ------ Rollback -------------
+
 			forcedBatch, err := s.state.GetForcedBatch(ctx, *batch.ForcedBatchNum, nil)
 			if err != nil {
 				return nil, err
@@ -275,6 +287,11 @@ func (s *SequenceSender) getSequencesToSend(ctx context.Context) ([]types.Sequen
 			seq.PrevBlockHash = fbL1Block.ParentHash
 			// Set sequence timestamps as the forced batch timestamp
 			seq.LastL2BLockTimestamp = seq.ForcedBatchTimestamp
+
+			//Rollback Test Code
+			sequences = append(sequences, seq)
+			return sequences, nil
+			// --------- Rollback -----------
 		} else {
 			// Set sequence timestamps as the latest l2 block timestamp
 			lastL2Block, err := s.state.GetLastL2BlockByBatchNumber(ctx, currentBatchNumToSequence, nil)
@@ -334,6 +351,8 @@ func (s *SequenceSender) isSynced(ctx context.Context, retries int, waitRetry ti
 	}
 
 	lastTrustedBatchClosed, err := s.state.GetLastClosedBatch(ctx, nil)
+	log.Info("lastTrustedBatchClose: %d", lastTrustedBatchClosed.BatchNumber)
+
 	if err != nil && err != state.ErrNotFound {
 		log.Warnf("failed to get last trusted batch closed, err: %v", err)
 		return false, nil

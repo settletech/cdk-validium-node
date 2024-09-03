@@ -343,7 +343,7 @@ func (g *ProcessorL1SequenceBatches) checkTrustedState(ctx context.Context, batc
 	//Compare virtual state with trusted state
 	var reorgReasons strings.Builder
 	if newRoot != tBatch.StateRoot {
-		log.Warnf("Different field StateRoot. Virtual: %s, Trusted: %s\n", newRoot.String(), tBatch.StateRoot.String())
+		log.Warnf("Incaberry Different field StateRoot. Virtual: %s, Trusted: %s\n", newRoot.String(), tBatch.StateRoot.String())
 		reorgReasons.WriteString(fmt.Sprintf("Different field StateRoot. Virtual: %s, Trusted: %s\n", newRoot.String(), tBatch.StateRoot.String()))
 	}
 	if hex.EncodeToString(batch.BatchL2Data) != hex.EncodeToString(tBatch.BatchL2Data) {
@@ -359,6 +359,7 @@ func (g *ProcessorL1SequenceBatches) checkTrustedState(ctx context.Context, batc
 		reorgReasons.WriteString(fmt.Sprintf("Different field Timestamp. Virtual: %d, Trusted: %d\n", batch.Timestamp.Unix(), tBatch.Timestamp.Unix()))
 	}
 	if batch.Coinbase.String() != tBatch.Coinbase.String() {
+
 		log.Warnf("Different field Coinbase. Virtual: %s, Trusted: %s\n", batch.Coinbase.String(), tBatch.Coinbase.String())
 		reorgReasons.WriteString(fmt.Sprintf("Different field Coinbase. Virtual: %s, Trusted: %s\n", batch.Coinbase.String(), tBatch.Coinbase.String()))
 	}
@@ -372,6 +373,8 @@ func (g *ProcessorL1SequenceBatches) checkTrustedState(ctx context.Context, batc
 			log.Warnf("missmatch in trusted state detected for Batch Number: %d. Reasons: %s", tBatch.BatchNumber, reason)
 		}
 		if g.sync.IsTrustedSequencer() {
+			log.Warnf("ROLLBACK TRUSTED REORG DETECTED! Batch: %d, Reasons: %s ", batch.BatchNumber, reason)
+
 			g.halt(ctx, fmt.Errorf("TRUSTED REORG DETECTED! Batch: %d", batch.BatchNumber))
 		}
 		// Store trusted reorg register

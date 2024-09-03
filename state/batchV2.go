@@ -167,10 +167,12 @@ func (s *State) ExecuteBatchV2(ctx context.Context, batch Batch, L1InfoTreeRoot 
 
 	processBatchResponse, err := s.executorClient.ProcessBatchV2(ctx, processBatchRequest)
 	if err != nil {
+		log.Infof("RB: Process Batch Error processing batch: %v", err)
 		log.Error("error executing batch: ", err)
 		return nil, err
 	} else if processBatchResponse != nil && processBatchResponse.Error != executor.ExecutorError_EXECUTOR_ERROR_NO_ERROR {
 		err = executor.ExecutorErr(processBatchResponse.Error)
+		log.Infof("RB: Executor Error processing batch: %v", err)
 		s.eventLog.LogExecutorErrorV2(ctx, processBatchResponse.Error, processBatchRequest)
 	}
 

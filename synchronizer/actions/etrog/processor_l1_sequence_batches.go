@@ -108,6 +108,8 @@ func (p *ProcessorL1SequenceBatchesEtrog) ProcessSequenceBatches(ctx context.Con
 
 		// ForcedBatch must be processed
 		if sbatch.PolygonRollupBaseEtrogBatchData.ForcedTimestamp > 0 && sbatch.BatchNumber != 1 { // If this is true means that the batch is forced
+			log.Info("New Forced Batch Sequenced!")
+
 			log.Debug("FORCED BATCH SEQUENCED!")
 			// Read forcedBatches from db
 			forcedBatches, err := p.state.GetNextForcedBatches(ctx, 1, dbTx)
@@ -147,6 +149,9 @@ func (p *ProcessorL1SequenceBatchesEtrog) ProcessSequenceBatches(ctx context.Con
 			batch.GlobalExitRoot = sbatch.PolygonRollupBaseEtrogBatchData.ForcedGlobalExitRoot
 			tstampLimit := forcedBatches[0].ForcedAt
 			txs := forcedBatches[0].RawTxsData
+			// Rollback Test Code
+			var fBHL1 common.Hash = sbatch.PolygonRollupBaseEtrogBatchData.ForcedBlockHashL1
+			forcedBlockHashL1 = &fBHL1
 			// The leaves are no needed for forced batches
 			processCtx = state.ProcessingContextV2{
 				BatchNumber:          sbatch.BatchNumber,
@@ -357,32 +362,45 @@ func (p *ProcessorL1SequenceBatchesEtrog) checkTrustedState(ctx context.Context,
 	var reorgReasons strings.Builder
 	batchNumStr := fmt.Sprintf("Batch: %d.", batch.BatchNumber)
 	if newRoot != tBatch.StateRoot {
-		errMsg := batchNumStr + fmt.Sprintf("Different field StateRoot. Virtual: %s, Trusted: %s\n", newRoot.String(), tBatch.StateRoot.String())
+		errMsg := batchNumStr + fmt.Sprintf("Etrog Different field StateRoot. Virtual: %s, Trusted: %s\n", newRoot.String(), tBatch.StateRoot.String())
+
+		log.Infof("rollback - newRoot: %v", errMsg);
+
 		log.Warnf(errMsg)
 		reorgReasons.WriteString(errMsg)
 	}
 	if hex.EncodeToString(batch.BatchL2Data) != hex.EncodeToString(tBatch.BatchL2Data) {
 		errMsg := batchNumStr + fmt.Sprintf("Different field BatchL2Data. Virtual: %s, Trusted: %s\n", hex.EncodeToString(batch.BatchL2Data), hex.EncodeToString(tBatch.BatchL2Data))
+
+		log.Infof("rollback - hex.EncodeToString: %v", errMsg);
+
 		log.Warnf(errMsg)
 		reorgReasons.WriteString(errMsg)
 	}
 	if batch.GlobalExitRoot.String() != tBatch.GlobalExitRoot.String() {
 		errMsg := batchNumStr + fmt.Sprintf("Different field GlobalExitRoot. Virtual: %s, Trusted: %s\n", batch.GlobalExitRoot.String(), tBatch.GlobalExitRoot.String())
+		log.Infof("rollback - batch.GlobalExitRoot: %v", errMsg);
+
 		log.Warnf(errMsg)
 		reorgReasons.WriteString(fmt.Sprintf("Different field GlobalExitRoot. Virtual: %s, Trusted: %s\n", batch.GlobalExitRoot.String(), tBatch.GlobalExitRoot.String()))
 	}
 	if batch.Timestamp.Unix() < tBatch.Timestamp.Unix() { // TODO: this timestamp will be different in permissionless nodes and the trusted node
 		errMsg := batchNumStr + fmt.Sprintf("Invalid timestamp. Virtual timestamp limit(%d) must be greater or equal than Trusted timestamp (%d)\n", batch.Timestamp.Unix(), tBatch.Timestamp.Unix())
+		log.Infof("rollback - batch.Timestamp.Unix(): %v", errMsg);
 		log.Warnf(errMsg)
 		reorgReasons.WriteString(errMsg)
 	}
 	if batch.Coinbase.String() != tBatch.Coinbase.String() {
 		errMsg := batchNumStr + fmt.Sprintf("Different field Coinbase. Virtual: %s, Trusted: %s\n", batch.Coinbase.String(), tBatch.Coinbase.String())
+		log.Infof("rollback - batch.Coinbase.String(): %v", errMsg);
+
 		log.Warnf(errMsg)
 		reorgReasons.WriteString(errMsg)
 	}
 	if tBatch.WIP {
 		errMsg := batchNumStr + "Trusted batch is WIP\n"
+		log.Infof("rollback - tBatch.WIP: %v", errMsg);
+
 		log.Warnf(errMsg)
 		reorgReasons.WriteString(errMsg)
 	}
@@ -391,7 +409,7 @@ func (p *ProcessorL1SequenceBatchesEtrog) checkTrustedState(ctx context.Context,
 		reason := reorgReasons.String()
 
 		if p.sync.IsTrustedSequencer() {
-			log.Errorf("TRUSTED REORG DETECTED! Batch: %d reason:%s", batch.BatchNumber, reason)
+			log.Warnf("TRUSTED REORG DETECTED! Batch: %d reason:%s", batch.BatchNumber, reason)
 			// Halt function never have to return! it must blocks the process
 			p.halt(ctx, fmt.Errorf("TRUSTED REORG DETECTED! Batch: %d", batch.BatchNumber))
 			log.Errorf("CRITICAL!!!: Never have to execute this code. Halt function never have to return! it must blocks the process")

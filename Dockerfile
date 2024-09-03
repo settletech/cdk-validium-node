@@ -3,7 +3,9 @@ FROM golang:1.21 AS build
 
 # INSTALL DEPENDENCIES
 RUN go install github.com/gobuffalo/packr/v2/packr2@v2.8.3
-COPY go.mod go.sum /src/
+
+COPY go.mod /src/
+COPY go.sum /src/
 RUN cd /src && go mod download
 
 # BUILD BINARY

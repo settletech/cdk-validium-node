@@ -68,6 +68,8 @@ func New(cfg Config, batchCfg state.BatchConfig, poolCfg pool.Config, txPool txP
 
 // Start starts the sequencer
 func (s *Sequencer) Start(ctx context.Context) {
+	log.Infof("Start Sequencer...")
+
 	for !s.isSynced(ctx) {
 		log.Infof("waiting for synchronizer to sync...")
 		time.Sleep(time.Second)

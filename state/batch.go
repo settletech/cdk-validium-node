@@ -436,9 +436,13 @@ func (s *State) sendBatchRequestToExecutor(ctx context.Context, processBatchRequ
 func (s *State) isBatchClosable(ctx context.Context, receipt ProcessingReceipt, dbTx pgx.Tx) error {
 	// Check if the batch that is being closed is the last batch
 	lastBatchNum, err := s.GetLastBatchNumber(ctx, dbTx)
+	log.Info("GetLastBatchNumber: %v", lastBatchNum)
+
 	if err != nil {
+		log.Error("GetLastBatchNumber failed! %v", err)
 		return err
 	}
+
 	if lastBatchNum != receipt.BatchNumber {
 		return fmt.Errorf("%w number %d, should be %d", ErrUnexpectedBatch, receipt.BatchNumber, lastBatchNum)
 	}
@@ -487,6 +491,8 @@ func (s *State) ProcessAndStoreClosedBatch(ctx context.Context, processingCtx Pr
 	forkID := s.GetForkIDByBatchNumber(processingCtx.BatchNumber)
 	decodedTransactions, _, _, err := DecodeTxs(*BatchL2Data, forkID)
 	if err != nil && !errors.Is(err, ErrInvalidData) {
+		log.Error("Decoding failed! %v", err)
+
 		log.Debugf("error decoding transactions: %v", err)
 		return common.Hash{}, noFlushID, noProverID, err
 	}
@@ -498,10 +504,13 @@ func (s *State) ProcessAndStoreClosedBatch(ctx context.Context, processingCtx Pr
 	// Avoid writing twice to the DB the BatchL2Data that is going to be written also in the call closeBatch
 	processingCtx.BatchL2Data = nil
 	if err := s.OpenBatch(ctx, processingCtx, dbTx); err != nil {
+		log.Error("s.OpenBatch failed! %v", err)
+
 		return common.Hash{}, noFlushID, noProverID, err
 	}
 	processed, err := s.processBatch(ctx, processingCtx.BatchNumber, *BatchL2Data, caller, dbTx)
 	if err != nil {
+		log.Error("s.processBatch failed! %v", err)
 		return common.Hash{}, noFlushID, noProverID, err
 	}
 
@@ -538,6 +547,7 @@ func (s *State) ProcessAndStoreClosedBatch(ctx context.Context, processingCtx Pr
 		// Store processed txs into the batch
 		err = s.StoreTransactions(ctx, processingCtx.BatchNumber, processedBatch.BlockResponses, nil, dbTx)
 		if err != nil {
+			log.Error("StoreTransactions failed! %v", err)
 			return common.Hash{}, noFlushID, noProverID, err
 		}
 	}
@@ -556,6 +566,7 @@ func (s *State) ProcessAndStoreClosedBatch(ctx context.Context, processingCtx Pr
 func (s *State) GetLastBatch(ctx context.Context, dbTx pgx.Tx) (*Batch, error) {
 	batches, err := s.GetLastNBatches(ctx, 1, dbTx)
 	if err != nil {
+		log.Info("s.GetLastNBatches %v", err)
 		return nil, err
 	}
 	if len(batches) == 0 {
