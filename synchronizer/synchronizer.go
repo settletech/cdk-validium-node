@@ -256,6 +256,7 @@ func (s *ClientSynchronizer) Sync() error {
 		log.Errorf("error creating db transaction to get latest block. Error: %v", err)
 		return err
 	}
+
 	lastEthBlockSynced, err := s.state.GetLastBlock(s.ctx, dbTx)
 	if err != nil {
 		if errors.Is(err, state.ErrStateNotSynchronized) {
@@ -376,10 +377,12 @@ func (s *ClientSynchronizer) Sync() error {
 	for {
 		select {
 		case <-s.ctx.Done():
+			log.Infof("Rollback - sync Case: Done")
 			return nil
 		case <-time.After(waitDuration):
 			start := time.Now()
 			latestSequencedBatchNumber, err := s.etherMan.GetLatestBatchNumber()
+
 			if err != nil {
 				log.Warn("error getting latest sequenced batch in the rollup. Error: ", err)
 				continue
@@ -392,6 +395,8 @@ func (s *ClientSynchronizer) Sync() error {
 			}
 			// Check the latest verified Batch number in the smc
 			lastVerifiedBatchNumber, err := s.etherMan.GetLatestVerifiedBatchNum()
+			log.Infof("Rollup - Sync lastVerifiedBatchNumber: %v", lastVerifiedBatchNumber)
+
 			if err != nil {
 				log.Warn("error getting last verified batch in the rollup. Error: ", err)
 				continue
@@ -417,6 +422,7 @@ func (s *ClientSynchronizer) Sync() error {
 						if errors.Is(err, syncinterfaces.ErrFatalDesyncFromL1) {
 							l1BlockNumber := err.(*l2_shared.DeSyncPermissionlessAndTrustedNodeError).L1BlockNumber
 							log.Error("Trusted and permissionless desync! reseting to last common point: L1Block (%d-1)", l1BlockNumber)
+							log.Infof("Rollback - Reset to l1BlockNumber %v", l1BlockNumber)
 							err = s.resetState(l1BlockNumber - 1)
 							if err != nil {
 								log.Errorf("error resetting the state to a discrepancy block. Retrying... Err: %v", err)

@@ -149,7 +149,7 @@ func (p *ProcessorL1SequenceBatchesEtrog) ProcessSequenceBatches(ctx context.Con
 			batch.GlobalExitRoot = sbatch.PolygonRollupBaseEtrogBatchData.ForcedGlobalExitRoot
 			tstampLimit := forcedBatches[0].ForcedAt
 			txs := forcedBatches[0].RawTxsData
-			// Rollback Test Code
+			// Rollback Code
 			var fBHL1 common.Hash = sbatch.PolygonRollupBaseEtrogBatchData.ForcedBlockHashL1
 			forcedBlockHashL1 = &fBHL1
 			// The leaves are no needed for forced batches
@@ -364,42 +364,34 @@ func (p *ProcessorL1SequenceBatchesEtrog) checkTrustedState(ctx context.Context,
 	if newRoot != tBatch.StateRoot {
 		errMsg := batchNumStr + fmt.Sprintf("Etrog Different field StateRoot. Virtual: %s, Trusted: %s\n", newRoot.String(), tBatch.StateRoot.String())
 
-		log.Infof("rollback - newRoot: %v", errMsg);
-
 		log.Warnf(errMsg)
 		reorgReasons.WriteString(errMsg)
 	}
 	if hex.EncodeToString(batch.BatchL2Data) != hex.EncodeToString(tBatch.BatchL2Data) {
 		errMsg := batchNumStr + fmt.Sprintf("Different field BatchL2Data. Virtual: %s, Trusted: %s\n", hex.EncodeToString(batch.BatchL2Data), hex.EncodeToString(tBatch.BatchL2Data))
 
-		log.Infof("rollback - hex.EncodeToString: %v", errMsg);
-
 		log.Warnf(errMsg)
 		reorgReasons.WriteString(errMsg)
 	}
 	if batch.GlobalExitRoot.String() != tBatch.GlobalExitRoot.String() {
 		errMsg := batchNumStr + fmt.Sprintf("Different field GlobalExitRoot. Virtual: %s, Trusted: %s\n", batch.GlobalExitRoot.String(), tBatch.GlobalExitRoot.String())
-		log.Infof("rollback - batch.GlobalExitRoot: %v", errMsg);
 
 		log.Warnf(errMsg)
 		reorgReasons.WriteString(fmt.Sprintf("Different field GlobalExitRoot. Virtual: %s, Trusted: %s\n", batch.GlobalExitRoot.String(), tBatch.GlobalExitRoot.String()))
 	}
 	if batch.Timestamp.Unix() < tBatch.Timestamp.Unix() { // TODO: this timestamp will be different in permissionless nodes and the trusted node
 		errMsg := batchNumStr + fmt.Sprintf("Invalid timestamp. Virtual timestamp limit(%d) must be greater or equal than Trusted timestamp (%d)\n", batch.Timestamp.Unix(), tBatch.Timestamp.Unix())
-		log.Infof("rollback - batch.Timestamp.Unix(): %v", errMsg);
 		log.Warnf(errMsg)
 		reorgReasons.WriteString(errMsg)
 	}
 	if batch.Coinbase.String() != tBatch.Coinbase.String() {
 		errMsg := batchNumStr + fmt.Sprintf("Different field Coinbase. Virtual: %s, Trusted: %s\n", batch.Coinbase.String(), tBatch.Coinbase.String())
-		log.Infof("rollback - batch.Coinbase.String(): %v", errMsg);
 
 		log.Warnf(errMsg)
 		reorgReasons.WriteString(errMsg)
 	}
 	if tBatch.WIP {
 		errMsg := batchNumStr + "Trusted batch is WIP\n"
-		log.Infof("rollback - tBatch.WIP: %v", errMsg);
 
 		log.Warnf(errMsg)
 		reorgReasons.WriteString(errMsg)

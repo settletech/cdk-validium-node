@@ -417,6 +417,7 @@ func (_m *StateMock) GetForcedBatchesSince(ctx context.Context, forcedBatchNumbe
 	if rf, ok := ret.Get(0).(func(context.Context, uint64, uint64, pgx.Tx) ([]*state.ForcedBatch, error)); ok {
 		return rf(ctx, forcedBatchNumber, maxBlockNumber, dbTx)
 	}
+
 	if rf, ok := ret.Get(0).(func(context.Context, uint64, uint64, pgx.Tx) []*state.ForcedBatch); ok {
 		r0 = rf(ctx, forcedBatchNumber, maxBlockNumber, dbTx)
 	} else {

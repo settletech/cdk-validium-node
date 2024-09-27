@@ -119,7 +119,7 @@ func (f *finalizer) initWIPBatch(ctx context.Context) {
 
 	isClosed := !lastStateBatch.WIP
 
-	log.Infof("batch %d isClosed: %v", lastBatchNum, isClosed)
+	// log.Infof("batch %d isClosed: %v", lastBatchNum, isClosed)
 
 	if isClosed { //if the last batch is close then open a new wip batch
 		if lastStateBatch.BatchNumber+1 == f.cfg.HaltOnBatchNumber {
@@ -165,6 +165,7 @@ func (f *finalizer) finalizeWIPBatch(ctx context.Context, closeReason state.Clos
 // closeAndOpenNewWIPBatch closes the current batch and opens a new one, potentially processing forced batches between the batch is closed and the resulting new wip batch
 func (f *finalizer) closeAndOpenNewWIPBatch(ctx context.Context, closeReason state.ClosingReason) error {
 	f.nextForcedBatchesMux.Lock()
+	// Rollback code
 	processForcedBatches := len(f.nextForcedBatches) > 0
 	f.nextForcedBatchesMux.Unlock()
 
@@ -197,8 +198,6 @@ func (f *finalizer) closeAndOpenNewWIPBatch(ctx context.Context, closeReason sta
 		return fmt.Errorf("failed to close batch, error: %v", err)
 	}
 
-	log.Infof("batch %d closed, closing reason: %s", f.wipBatch.batchNumber, closeReason)
-
 	// Reprocess full batch as sanity check
 	if f.cfg.SequentialBatchSanityCheck {
 		// Do the full batch reprocess now
@@ -220,6 +219,8 @@ func (f *finalizer) closeAndOpenNewWIPBatch(ctx context.Context, closeReason sta
 
 	// Process forced batches
 	if processForcedBatches {
+		log.Infof("Rollback: Forced batch received but not process!")
+		// Rollback code
 		lastBatchNumber, stateRoot = f.processForcedBatches(ctx, lastBatchNumber, stateRoot)
 		log.Infof("batch.go processForcedBatches is True and lastBatchNumber is: %d", lastBatchNumber)
 		// We must init/reset the wip L2 block from the state since processForcedBatches can created new L2 blocks
@@ -227,7 +228,7 @@ func (f *finalizer) closeAndOpenNewWIPBatch(ctx context.Context, closeReason sta
 	}
 
 	f.wipBatch, err = f.openNewWIPBatch(ctx, lastBatchNumber+1, stateRoot)
-	
+
 	if err != nil {
 		log.Error("openNewWIPBatch() failed ", err)
 		return fmt.Errorf("failed to open new wip batch, error: %v", err)

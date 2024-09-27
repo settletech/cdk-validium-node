@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/0xPolygonHermez/zkevm-node/hex"
+	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/0xPolygonHermez/zkevm-node/state"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jackc/pgx/v4"
@@ -44,6 +45,8 @@ func (p *PostgresStorage) GetForcedBatch(ctx context.Context, forcedBatchNumber 
 
 // GetForcedBatchesSince gets L1 forced batches since forcedBatchNumber
 func (p *PostgresStorage) GetForcedBatchesSince(ctx context.Context, forcedBatchNumber, maxBlockNumber uint64, dbTx pgx.Tx) ([]*state.ForcedBatch, error) {
+	log.Info("Rollback Getting Forced Batches from db fbnumber: %v , maxBlockNumber: %v", forcedBatchNumber, maxBlockNumber)
+
 	const getForcedBatchesSQL = "SELECT forced_batch_num, global_exit_root, timestamp, raw_txs_data, coinbase, block_num FROM state.forced_batch WHERE forced_batch_num > $1 AND block_num <= $2 ORDER BY forced_batch_num ASC"
 	q := p.getExecQuerier(dbTx)
 	rows, err := q.Query(ctx, getForcedBatchesSQL, forcedBatchNumber, maxBlockNumber)
@@ -53,6 +56,8 @@ func (p *PostgresStorage) GetForcedBatchesSince(ctx context.Context, forcedBatch
 		return nil, err
 	}
 	defer rows.Close()
+
+	log.Info("Rollback total rows: %v", len(rows.RawValues()))
 
 	forcesBatches := make([]*state.ForcedBatch, 0, len(rows.RawValues()))
 
@@ -70,6 +75,8 @@ func (p *PostgresStorage) GetForcedBatchesSince(ctx context.Context, forcedBatch
 
 // GetNextForcedBatches gets the next forced batches from the queue.
 func (p *PostgresStorage) GetNextForcedBatches(ctx context.Context, nextForcedBatches int, dbTx pgx.Tx) ([]state.ForcedBatch, error) {
+	log.Info("Rollback GetNextForcedBatches %v", nextForcedBatches)
+
 	const getNextForcedBatchesSQL = `
 		SELECT forced_batch_num, global_exit_root, timestamp, raw_txs_data, coinbase, block_num 
 		FROM state.forced_batch

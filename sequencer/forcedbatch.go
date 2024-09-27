@@ -230,9 +230,18 @@ func (f *finalizer) setNextForcedBatchDeadline() {
 }
 
 func (f *finalizer) checkForcedBatches(ctx context.Context) {
+	log.Info("Rollback log: checkForcedBatches %v", f.cfg.ForcedBatchesCheckInterval.Duration)
 	for {
 		time.Sleep(f.cfg.ForcedBatchesCheckInterval.Duration)
 
+		// Rollback code
+		result, _ := f.etherman.GetIsRevertBatchesExecuted()
+
+		if !result {
+			continue
+		}
+		//
+		log.Info("Rollback In check Forced Batches")
 		if f.lastForcedBatchNum == 0 {
 			lastTrustedForcedBatchNum, err := f.stateIntf.GetLastTrustedForcedBatchNumber(ctx, nil)
 			if err != nil {
@@ -253,8 +262,9 @@ func (f *finalizer) checkForcedBatches(ctx context.Context) {
 		blockNumber := lastBlock.BlockNumber
 
 		maxBlockNumber := uint64(0)
+		// Rollback code
 		finalityNumberOfBlocks := f.cfg.ForcedBatchesL1BlockConfirmations
-
+		//finalityNumberOfBlocks := uint64(4)
 		if finalityNumberOfBlocks <= blockNumber {
 			maxBlockNumber = blockNumber - finalityNumberOfBlocks
 		}
@@ -266,6 +276,7 @@ func (f *finalizer) checkForcedBatches(ctx context.Context) {
 		}
 
 		for _, forcedBatch := range forcedBatches {
+			log.Info("Rollback finalizer received forced batch at block: %v enter", forcedBatch.BlockNumber)
 			log.Debugf("finalizer received forced batch at block number: %d", forcedBatch.BlockNumber)
 
 			f.nextForcedBatchesMux.Lock()

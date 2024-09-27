@@ -36,6 +36,7 @@ type etherman interface {
 	GetLatestBatchNumber() (uint64, error)
 	GetLatestBlockNumber(ctx context.Context) (uint64, error)
 	HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error)
+	GetIsRevertBatchesExecuted() (bool, error)
 }
 
 // stateInterface gathers the methods required to interact with the state.

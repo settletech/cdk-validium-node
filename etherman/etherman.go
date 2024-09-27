@@ -45,6 +45,10 @@ import (
 )
 
 var (
+	// Events Rollback
+	logForcedBatchData      = crypto.Keccak256Hash([]byte("LogForcedBatchData(bytes,bytes32,uint256,bytes32)"))
+	revertLastVerifiedBatch = crypto.Keccak256Hash([]byte("RevertLastVerifiedBatch(uint64,uint64)"))
+
 	// Events RollupManager
 	setBatchFeeSignatureHash                       = crypto.Keccak256Hash([]byte("SetBatchFee(uint256)"))
 	setTrustedAggregatorSignatureHash              = crypto.Keccak256Hash([]byte("SetTrustedAggregator(address)"))       // Used in oldZkEvm as well
@@ -113,6 +117,7 @@ var (
 	methodIDSequenceBatchesValidiumEtrog = []byte{0x2d, 0x72, 0xc2, 0x48} // 0x2d72c248 sequenceBatchesValidium((bytes32,bytes32,uint64,bytes32)[],address,bytes)
 	// methodIDSequenceBatchesValidiumElderberry: MethodID for sequenceBatchesValidium in Elderberry
 	methodIDSequenceBatchesValidiumElderberry = []byte{0xdb, 0x5b, 0x0e, 0xd7} // 0xdb5b0ed7 sequenceBatchesValidium((bytes32,bytes32,uint64,bytes32)[],uint64,uint64,address,bytes)
+	// function sequenceBatchesValidium(ValidiumBatchData[],uint64,uint64,address,bytes)
 
 	// ErrNotFound is used when the object is not found
 	ErrNotFound = errors.New("not found")
@@ -657,6 +662,12 @@ func (etherMan *Client) processEvent(ctx context.Context, vLog types.Log, blocks
 	case setBatchFeeSignatureHash:
 		log.Debug("SetBatchFee event detected. Ignoring...")
 		return nil
+	case revertLastVerifiedBatch:
+		log.Debug("RevertLastVerifiedBatch event detected. Ignoring...")
+		return nil
+	case logForcedBatchData:
+		log.Debug("LogForcedBatchData event detected. Ignoring...")
+		return nil
 	}
 	log.Warnf("Event not registered: %+v", vLog)
 	return nil
@@ -1027,8 +1038,7 @@ func (etherMan *Client) BuildTrustedVerifyBatchesTxData(lastVerifiedBatch, newVe
 	}
 
 	const pendStateNum = 0 // TODO hardcoded for now until we implement the pending state feature
-	// log.Warnf("Rollback - pendStateNum: %v, lastVerifiedBatch: %v, newVerifiedBatch: %v, newLocalExitRoot: %v, newStateRoot: %v ", pendStateNum, lastVerifiedBatch, newVerifiedBatch, newLocalExitRoot, newStateRoot)
-	
+
 	tx, err := etherMan.RollupManager.VerifyBatchesTrustedAggregator(
 		&opts,
 		etherMan.RollupID,
@@ -1044,7 +1054,7 @@ func (etherMan *Client) BuildTrustedVerifyBatchesTxData(lastVerifiedBatch, newVe
 		if parsedErr, ok := tryParseError(err); ok {
 			err = parsedErr
 		}
-		log.Warnf("Rollback: Verification failed: %v", err)
+
 		return nil, nil, err
 	}
 
@@ -1078,6 +1088,16 @@ func (etherMan *Client) GetSendSequenceFee(numBatches uint64) (*big.Int, error) 
 	}
 	fee := new(big.Int).Mul(f, new(big.Int).SetUint64(numBatches))
 	return fee, nil
+}
+
+// Rollback code
+func (etherMan *Client) GetIsRevertBatchesExecuted() (bool, error) {
+	f, err := etherMan.RollupManager.IsRevertBatchesExecuted(&bind.CallOpts{Pending: false})
+	if err != nil {
+		return false, err
+	}
+
+	return f, nil
 }
 
 // TrustedSequencer gets trusted sequencer address
@@ -1528,8 +1548,6 @@ func (etherMan *Client) verifyBatches(
 	} else if (*blocks)[len(*blocks)-1].BlockHash == vLog.BlockHash && (*blocks)[len(*blocks)-1].BlockNumber == vLog.BlockNumber {
 		(*blocks)[len(*blocks)-1].VerifiedBatches = append((*blocks)[len(*blocks)-1].VerifiedBatches, verifyBatch)
 	} else {
-		log.Infof("Rollback: Error processing verify Batch event %v , BlockNumber: %v", vLog.BlockHash, vLog.BlockNumber)
-
 		log.Error("Error processing verifyBatch event. BlockHash:", vLog.BlockHash, ". BlockNumber: ", vLog.BlockNumber)
 		return fmt.Errorf("error processing verifyBatch event")
 	}

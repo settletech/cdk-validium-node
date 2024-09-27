@@ -18,10 +18,10 @@ gen oldpolygonzkevmglobalexitroot
 gen oldpolygonzkevmbridge
 gen oldpolygonzkevm
 gen etrogpolygonzkevm
-gen polygonzkevm
 gen polygonzkevmbridge
 gen pol
 gen polygonzkevmglobalexitroot
+gen polygonzkevm
 gen polygonrollupmanager
 gen mockpolygonrollupmanager
 gen mockverifier
