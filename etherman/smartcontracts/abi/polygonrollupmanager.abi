@@ -1750,13 +1750,7 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "uint32",
-          "name": "rollupID",
-          "type": "uint32"
-        }
-      ],
+      "inputs": [],
       "name": "revertLastVerifiedBatch",
       "outputs": [],
       "stateMutability": "nonpayable",

@@ -83,6 +83,62 @@ func (p *PostgresStorage) GetVerifiedBatch(ctx context.Context, batchNumber uint
 	return &verifiedBatch, nil
 }
 
+// Rollback code
+func (p *PostgresStorage) GetBlockNumberByBatch(ctx context.Context, batchNumber uint64, dbTx pgx.Tx) (uint64, error) {
+	//var block state.Block
+	var blockNumber uint64
+
+	const getBlockByNumberSQL = "SELECT block_num FROM state.verified_batch WHERE batch_num = $1"
+
+	q := p.getExecQuerier(dbTx)
+
+	err := q.QueryRow(ctx, getBlockByNumberSQL, batchNumber).Scan(&blockNumber)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, state.ErrNotFound
+	}
+
+	return blockNumber, err
+}
+
+func (p *PostgresStorage) GetBatchNumberAccHash(ctx context.Context, accInputHash common.Hash, dbTx pgx.Tx) (uint64, error) {
+	var batchNumber uint64
+
+	accInputHashString := accInputHash.String()
+
+	const getBatchByHashSQL = "SELECT batch_num FROM state.batch WHERE acc_input_hash = $1"
+
+	q := p.getExecQuerier(dbTx)
+
+	err := q.QueryRow(ctx, getBatchByHashSQL, accInputHashString).Scan(&batchNumber)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, state.ErrNotFound
+	}
+
+	return batchNumber, err
+}
+
+func (p *PostgresStorage) ResetBatches(ctx context.Context, batchNumber uint64, dbTx pgx.Tx) error {
+	e := p.getExecQuerier(dbTx)
+	const resetSQL = "DELETE FROM state.batch WHERE batch_num > $1"
+	if _, err := e.Exec(ctx, resetSQL, batchNumber); err != nil {
+		return err
+	}
+
+	/*const resetSQLVirtualBatches = "DELETE FROM state.virtual_batch WHERE batch_num > $1"
+	if _, err := e.Exec(ctx, resetSQLVirtualBatches, batchNumber); err != nil {
+		return err
+	}
+
+	const resetSQLVerifiedBatches = "DELETE FROM state.verified_batch WHERE batch_num > $1"
+	if _, err := e.Exec(ctx, resetSQLVerifiedBatches, batchNumber); err != nil {
+		return err
+	} */
+
+	return nil
+}
+
+//*****************
+
 // GetLastNBatches returns the last numBatches batches.
 func (p *PostgresStorage) GetLastNBatches(ctx context.Context, numBatches uint, dbTx pgx.Tx) ([]*state.Batch, error) {
 	const getLastNBatchesSQL = "SELECT batch_num, global_exit_root, local_exit_root, acc_input_hash, state_root, timestamp, coinbase, raw_txs_data, forced_batch_num, batch_resources, wip from state.batch ORDER BY batch_num DESC LIMIT $1"
@@ -860,7 +916,7 @@ func (p *PostgresStorage) GetLastClosedBatch(ctx context.Context, dbTx pgx.Tx) (
 	e := p.getExecQuerier(dbTx)
 	row := e.QueryRow(ctx, getLastClosedBatchSQL)
 	batch, err := scanBatch(row)
-	
+
 	if errors.Is(err, pgx.ErrNoRows) {
 		log.Errorf("Batch.go GetLastClosedBatch: %v", err)
 

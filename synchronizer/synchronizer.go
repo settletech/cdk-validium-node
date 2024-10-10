@@ -258,6 +258,7 @@ func (s *ClientSynchronizer) Sync() error {
 	}
 
 	lastEthBlockSynced, err := s.state.GetLastBlock(s.ctx, dbTx)
+	log.Infof("Rollback - lastEthBlockSynced: %v", lastEthBlockSynced)
 	if err != nil {
 		if errors.Is(err, state.ErrStateNotSynchronized) {
 			log.Info("State is empty, verifying genesis block")
@@ -353,6 +354,7 @@ func (s *ClientSynchronizer) Sync() error {
 		}
 		return err
 	}
+
 	err = s.state.SetInitSyncBatch(s.ctx, initBatchNumber, dbTx)
 	if err != nil {
 		log.Error("error setting initial batch number. Error: ", err)
@@ -380,6 +382,7 @@ func (s *ClientSynchronizer) Sync() error {
 			log.Infof("Rollback - sync Case: Done")
 			return nil
 		case <-time.After(waitDuration):
+
 			start := time.Now()
 			latestSequencedBatchNumber, err := s.etherMan.GetLatestBatchNumber()
 
@@ -406,7 +409,7 @@ func (s *ClientSynchronizer) Sync() error {
 				log.Warn("error setting latest batch info into db. Error: ", err)
 				continue
 			}
-			log.Infof("latestSequencedBatchNumber: %d, latestSyncedBatch: %d, lastVerifiedBatchNumber: %d", latestSequencedBatchNumber, latestSyncedBatch, lastVerifiedBatchNumber)
+			log.Infof("Rollback: latestSequencedBatchNumber: %d, latestSyncedBatch: %d, lastVerifiedBatchNumber: %d", latestSequencedBatchNumber, latestSyncedBatch, lastVerifiedBatchNumber)
 			// Sync trusted state
 			// latestSyncedBatch -> Last batch on DB
 			// latestSequencedBatchNumber -> last batch on SMC
@@ -473,6 +476,64 @@ func (s *ClientSynchronizer) Sync() error {
 					continue
 				}
 			}
+
+			// Rollback code
+			log.Infof("Rollback - Check Revert")
+			log.Infof("latestSyncedBatch: %v < latestSequencedBatchNumber: %v", latestSyncedBatch, latestSequencedBatchNumber)
+			contractLastVerifiedBatchNumber, err := s.etherMan.GetLatestVerifiedBatchNum()
+
+			log.Infof("Rollback - before contractLastVerifiedBatchNumber: %v", contractLastVerifiedBatchNumber)
+			if err != nil {
+				log.Errorf("error contractLastVerifiedBatchNumber")
+			}
+
+			revertBatches, _ := s.etherMan.GetIsRevertBatchesExecuted()
+			log.Infof("Rollback - Check revertBatches: %v", revertBatches)
+			if err != nil {
+				log.Errorf("error GetIsRevertBatchesExecuted")
+				return err
+			}
+
+			stateLastVerifiedBatch, err := s.state.GetLastVerifiedBatch(s.ctx, nil)
+			log.Infof("Rollback - stateLastVerifiedBatch: %d", stateLastVerifiedBatch.BatchNumber)
+			if err != nil {
+				log.Errorf("error stateGetLastVerifiedBatch: %v", err)
+				return err
+			}
+
+			if contractLastVerifiedBatchNumber < stateLastVerifiedBatch.BatchNumber && revertBatches {
+				blockNumberByBatch, err := s.state.GetBlockNumberByBatch(s.ctx, contractLastVerifiedBatchNumber, nil)
+				if err != nil {
+					log.Errorf("error stateGetBlockNumberByBatch: %v", err)
+					return err
+				}
+
+				log.Infof("Rollback - lastVerifiedBatchNumberTemp: %d", blockNumberByBatch)
+				/*err = s.resetState(blockNumberByBatch)
+				if err != nil {
+					log.Errorf("error lastVerifiedBatchNumberTemp err: %s", err.Error())
+				} */
+
+				lastAccHash, err := s.etherMan.GetLastAccInputHash()
+				if err != nil {
+					log.Errorf("error getting: %s", err.Error())
+				}
+
+				batchNumber, err := s.state.GetBatchNumberAccHash(s.ctx, lastAccHash, nil)
+				if err != nil {
+					log.Errorf("error getting batch number: %s", err.Error())
+				}
+
+				err = s.state.ResetBatches(s.ctx, batchNumber, dbTx)
+				if err != nil {
+					log.Errorf("error reseting batches err: %s", err.Error())
+				}
+
+				log.Infof("Rollback - Rollback done! lastAccHash: %v, batchNumber: %v", lastAccHash, batchNumber)
+
+			}
+			// End Rollback code
+
 			metrics.FullSyncIterationTime(time.Since(start))
 			log.Info("L1 state fully synchronized")
 		}

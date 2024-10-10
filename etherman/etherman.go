@@ -117,7 +117,9 @@ var (
 	methodIDSequenceBatchesValidiumEtrog = []byte{0x2d, 0x72, 0xc2, 0x48} // 0x2d72c248 sequenceBatchesValidium((bytes32,bytes32,uint64,bytes32)[],address,bytes)
 	// methodIDSequenceBatchesValidiumElderberry: MethodID for sequenceBatchesValidium in Elderberry
 	methodIDSequenceBatchesValidiumElderberry = []byte{0xdb, 0x5b, 0x0e, 0xd7} // 0xdb5b0ed7 sequenceBatchesValidium((bytes32,bytes32,uint64,bytes32)[],uint64,uint64,address,bytes)
-	// function sequenceBatchesValidium(ValidiumBatchData[],uint64,uint64,address,bytes)
+	// Rollback code
+	// methodIDExecuteAllForcedTransactionsElderberry: MethodID for executeAllForcedTransactions in Elderberry
+	methodIDExecuteAllForcedTransactionsElderberry = []byte{0x7c, 0xbe, 0x81, 0x7f} // 0x7cbe817f executeAllForcedTransactions((bytes32,bytes32,uint64,bytes32)[],uint64,uint64,address,bytes)
 
 	// ErrNotFound is used when the object is not found
 	ErrNotFound = errors.New("not found")
@@ -958,13 +960,16 @@ func (etherMan *Client) BuildSequenceBatchesTxData(sender common.Address, sequen
 }
 
 func (etherMan *Client) sequenceBatches(opts bind.TransactOpts, sequences []ethmanTypes.Sequence, maxSequenceTimestamp uint64, lastSequencedBatchNumber uint64, l2Coinbase common.Address, dataAvailabilityMessage []byte) (*types.Transaction, error) {
+	// Rollback code
 	var batches []polygonzkevm.PolygonValidiumEtrogValidiumBatchData
+	//var batches []etrogpolygonzkevm.PolygonValidiumEtrogValidiumBatchData
 	for _, seq := range sequences {
 		var ger common.Hash
 		if seq.ForcedBatchTimestamp > 0 {
 			ger = seq.GlobalExitRoot
 		}
 		batch := polygonzkevm.PolygonValidiumEtrogValidiumBatchData{
+			//batch := etrogpolygonzkevm.PolygonValidiumEtrogValidiumBatchData{
 			TransactionsHash:     crypto.Keccak256Hash(seq.BatchL2Data),
 			ForcedGlobalExitRoot: ger,
 			ForcedTimestamp:      uint64(seq.ForcedBatchTimestamp),
@@ -974,7 +979,39 @@ func (etherMan *Client) sequenceBatches(opts bind.TransactOpts, sequences []ethm
 		batches = append(batches, batch)
 	}
 
-	tx, err := etherMan.ZkEVM.SequenceBatchesValidium(&opts, batches, maxSequenceTimestamp, lastSequencedBatchNumber, l2Coinbase, dataAvailabilityMessage)
+	var tx *types.Transaction
+	var err error
+
+	log.Infof("%d", tx)
+
+	//tx, err = etherMan.ZkEVM.SequenceBatchesValidium(&opts, batches, maxSequenceTimestamp, lastSequencedBatchNumber, l2Coinbase, dataAvailabilityMessage)
+	// Rollback code
+	exitMode, err := etherMan.GetIsExitMode()
+	if err != nil {
+		log.Infof("exitMode: %v, error: %v", exitMode, err)
+		return nil, err
+	}
+
+	revertMode, err := etherMan.GetIsRevertModeActive()
+	if err != nil {
+		log.Infof("revertMode: %v, error: %v", revertMode, err)
+		return nil, err
+	}
+
+	if !revertMode && !exitMode {
+		tx, err = etherMan.ZkEVM.SequenceBatchesValidium(&opts, batches, maxSequenceTimestamp, lastSequencedBatchNumber, l2Coinbase, dataAvailabilityMessage)
+		log.Infof("No exitMode %v, error: %v", tx, err)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		tx, err = etherMan.ZkEVM.ExecuteAllForcedTransactions(&opts, batches, maxSequenceTimestamp, lastSequencedBatchNumber, l2Coinbase, dataAvailabilityMessage)
+		log.Infof("ExitMode True Tx: %v, error: %v", tx, err)
+		if err != nil {
+			return nil, err
+		}
+	}
+	// --------------------------------------
 	if err != nil {
 		log.Debugf("Batches to send: %+v", batches)
 		log.Debug("l2CoinBase: ", l2Coinbase)
@@ -1100,6 +1137,33 @@ func (etherMan *Client) GetIsRevertBatchesExecuted() (bool, error) {
 	return f, nil
 }
 
+func (etherMan *Client) GetLastAccInputHash() (common.Hash, error) {
+	f, err := etherMan.ZkEVM.LastAccInputHash(&bind.CallOpts{Pending: false})
+	if err != nil {
+		return *new([32]byte), err
+	}
+
+	return f, nil
+}
+
+func (etherMan *Client) GetIsExitMode() (bool, error) {
+	f, err := etherMan.ZkEVM.ExitMode(&bind.CallOpts{Pending: false})
+	if err != nil {
+		return false, err
+	}
+
+	return f, nil
+}
+
+func (etherMan *Client) GetIsRevertModeActive() (bool, error) {
+	f, err := etherMan.ZkEVM.IsRevertModeActive(&bind.CallOpts{Pending: false})
+	if err != nil {
+		return false, err
+	}
+
+	return f, nil
+}
+
 // TrustedSequencer gets trusted sequencer address
 func (etherMan *Client) TrustedSequencer() (common.Address, error) {
 	return etherMan.ZkEVM.TrustedSequencer(&bind.CallOpts{Pending: false})
@@ -1211,7 +1275,8 @@ func (etherMan *Client) sequencedBatchesEvent(ctx context.Context, vLog types.Lo
 				return fmt.Errorf("error decoding the sequences (etrog): %v", err)
 			}
 		} else if bytes.Equal(methodId, methodIDSequenceBatchesElderberry) ||
-			bytes.Equal(methodId, methodIDSequenceBatchesValidiumElderberry) {
+			bytes.Equal(methodId, methodIDSequenceBatchesValidiumElderberry) ||
+			bytes.Equal(methodId, methodIDExecuteAllForcedTransactionsElderberry) {
 			sequences, err = decodeSequencesElderberry(tx.Data(), sb.NumBatch, msg.From, vLog.TxHash, msg.Nonce, sb.L1InfoRoot, etherMan.da)
 			if err != nil {
 				return fmt.Errorf("error decoding the sequences (elderberry): %v", err)
@@ -1389,7 +1454,7 @@ func decodeSequencedBatches(smcAbi abi.ABI, txData []byte, forkID uint64, lastBa
 		}
 
 		return sequencedBatches, nil
-	case "sequenceBatchesValidium":
+	case "sequenceBatchesValidium", "executeAllForcedTransactions":
 		var sequencesValidium []polygonzkevm.PolygonValidiumEtrogValidiumBatchData
 		err := json.Unmarshal(bytedata, &sequencesValidium)
 		if err != nil {

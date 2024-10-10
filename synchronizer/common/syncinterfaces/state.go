@@ -49,6 +49,11 @@ type StateFullInterface interface {
 	ExecuteBatch(ctx context.Context, batch state.Batch, updateMerkleTree bool, dbTx pgx.Tx) (*executor.ProcessBatchResponse, error)
 	ExecuteBatchV2(ctx context.Context, batch state.Batch, L1InfoTreeRoot common.Hash, l1InfoTreeData map[uint32]state.L1DataV2, timestampLimit time.Time, updateMerkleTree bool, skipVerifyL1InfoRoot uint32, forcedBlockHashL1 *common.Hash, dbTx pgx.Tx) (*executor.ProcessBatchResponseV2, error)
 	GetLastVerifiedBatch(ctx context.Context, dbTx pgx.Tx) (*state.VerifiedBatch, error)
+	// Rollback code
+	GetBlockNumberByBatch(ctx context.Context, batchNumber uint64, dbTx pgx.Tx) (uint64, error)
+	GetBatchNumberAccHash(ctx context.Context, accInputHash common.Hash, dbTx pgx.Tx) (uint64, error)
+	ResetBatches(ctx context.Context, batchNumber uint64, dbTx pgx.Tx) error
+
 	GetLastVirtualBatchNum(ctx context.Context, dbTx pgx.Tx) (uint64, error)
 	AddSequence(ctx context.Context, sequence state.Sequence, dbTx pgx.Tx) error
 	AddAccumulatedInputHash(ctx context.Context, batchNum uint64, accInputHash common.Hash, dbTx pgx.Tx) error

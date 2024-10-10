@@ -272,6 +272,11 @@
     },
     {
       "inputs": [],
+      "name": "SequenceWithDataAvailabilityNotAllowed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "SequenceZeroBatches",
       "type": "error"
     },
@@ -288,6 +293,11 @@
     {
       "inputs": [],
       "name": "StoredRootMustBeDifferentThanNewRoot",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "SwitchToSameValue",
       "type": "error"
     },
     {
@@ -485,6 +495,19 @@
         {
           "indexed": false,
           "internalType": "address",
+          "name": "newDataAvailabilityProtocol",
+          "type": "address"
+        }
+      ],
+      "name": "SetDataAvailabilityProtocol",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
           "name": "newForceBatchAddress",
           "type": "address"
         }
@@ -529,6 +552,12 @@
         }
       ],
       "name": "SetTrustedSequencerURL",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [],
+      "name": "SwitchSequenceWithDataAvailability",
       "type": "event"
     },
     {
@@ -786,6 +815,109 @@
     },
     {
       "inputs": [],
+      "name": "dataAvailabilityProtocol",
+      "outputs": [
+        {
+          "internalType": "contract IDataAvailabilityProtocol",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "bytes",
+              "name": "transactions",
+              "type": "bytes"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "forcedGlobalExitRoot",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint64",
+              "name": "forcedTimestamp",
+              "type": "uint64"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "forcedBlockHashL1",
+              "type": "bytes32"
+            }
+          ],
+          "internalType": "struct PolygonRollupBaseEtrog.BatchData",
+          "name": "forcedBatchData",
+          "type": "tuple"
+        }
+      ],
+      "name": "enterRevertMode",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "bytes32",
+              "name": "transactionsHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "forcedGlobalExitRoot",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint64",
+              "name": "forcedTimestamp",
+              "type": "uint64"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "forcedBlockHashL1",
+              "type": "bytes32"
+            }
+          ],
+          "internalType": "struct PolygonValidiumEtrog.ValidiumBatchData[]",
+          "name": "batches",
+          "type": "tuple[]"
+        },
+        {
+          "internalType": "uint64",
+          "name": "maxSequenceTimestamp",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint64",
+          "name": "initSequencedBatch",
+          "type": "uint64"
+        },
+        {
+          "internalType": "address",
+          "name": "l2Coinbase",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes",
+          "name": "dataAvailabilityMessage",
+          "type": "bytes"
+        }
+      ],
+      "name": "executeAllForcedTransactions",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "exitMode",
       "outputs": [
         {
@@ -981,7 +1113,20 @@
           "type": "bool"
         }
       ],
-      "stateMutability": "nonpayable",
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "isSequenceWithDataAvailabilityAllowed",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -1179,6 +1324,61 @@
         {
           "components": [
             {
+              "internalType": "bytes32",
+              "name": "transactionsHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "forcedGlobalExitRoot",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint64",
+              "name": "forcedTimestamp",
+              "type": "uint64"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "forcedBlockHashL1",
+              "type": "bytes32"
+            }
+          ],
+          "internalType": "struct PolygonValidiumEtrog.ValidiumBatchData[]",
+          "name": "batches",
+          "type": "tuple[]"
+        },
+        {
+          "internalType": "uint64",
+          "name": "maxSequenceTimestamp",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint64",
+          "name": "initSequencedBatch",
+          "type": "uint64"
+        },
+        {
+          "internalType": "address",
+          "name": "l2Coinbase",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes",
+          "name": "dataAvailabilityMessage",
+          "type": "bytes"
+        }
+      ],
+      "name": "sequenceBatchesValidium",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
               "internalType": "bytes",
               "name": "transactions",
               "type": "bytes"
@@ -1205,6 +1405,19 @@
         }
       ],
       "name": "sequenceForceBatches",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "contract IDataAvailabilityProtocol",
+          "name": "newDataAvailabilityProtocol",
+          "type": "address"
+        }
+      ],
+      "name": "setDataAvailabilityProtocol",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -1257,6 +1470,19 @@
         }
       ],
       "name": "setTrustedSequencerURL",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bool",
+          "name": "newIsSequenceWithDataAvailabilityAllowed",
+          "type": "bool"
+        }
+      ],
+      "name": "switchSequenceWithDataAvailability",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

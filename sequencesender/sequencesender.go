@@ -262,7 +262,7 @@ func (s *SequenceSender) getSequencesToSend(ctx context.Context) ([]types.Sequen
 		}
 		// ROLLBACK
 		log.Info("Current batch: %d, IsForced: %v", currentBatchNumToSequence, batch.ForcedBatchNum)
-			
+
 		if batch.ForcedBatchNum != nil {
 			// Rollback Test Code
 			log.Info("Forced: Sequences Length: %v", len(sequences))
@@ -377,6 +377,13 @@ func (s *SequenceSender) isSynced(ctx context.Context, retries int, waitRetry ti
 				log.Warnf("failed to get from the SC last sequenced batch number, err: %v", err)
 				return false, nil
 			}
+			// Rollback code
+			lastVirtualBatchNum, err = s.state.GetLastVirtualBatchNum(ctx, nil)
+			if err != nil && err != state.ErrNotFound {
+				log.Warnf("failed to get last virtual batch number, err: %v", err)
+				return false, nil
+			}
+			//------------
 			if lastVirtualBatchNum == lastSCBatchNum { // last virtual batch is equals to last sequenced batch in the SC, everything is ok we continue
 				break
 			} else if i == retries-1 { // it's the last retry, we halt sequence-sender

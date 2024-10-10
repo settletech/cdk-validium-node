@@ -241,7 +241,8 @@ func (f *finalizer) checkForcedBatches(ctx context.Context) {
 			continue
 		}
 		//
-		log.Info("Rollback In check Forced Batches")
+		log.Info("Rollback In check Forced Batches: %v", result)
+
 		if f.lastForcedBatchNum == 0 {
 			lastTrustedForcedBatchNum, err := f.stateIntf.GetLastTrustedForcedBatchNumber(ctx, nil)
 			if err != nil {

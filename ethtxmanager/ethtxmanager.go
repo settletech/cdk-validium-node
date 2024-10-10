@@ -678,9 +678,17 @@ func (c *Client) ProcessPendingMonitoredTxs(ctx context.Context, owner string, r
 				}
 
 				// if the result status is confirmed or failed, breaks the wait loop
+				log.Infof("Rollback result.Status: %v", result.Status)
 				if result.Status == MonitoredTxStatusConfirmed || result.Status == MonitoredTxStatusFailed {
 					break
 				}
+
+				// Rollback code
+				/*if result.Status == MonitoredTxStatusReorged {
+					results = nil
+					log.Infof("Rollback Break Reorg!")
+					break
+				}*/
 
 				mTxResultLogger.Infof("waiting for monitored tx to get confirmed, status: %v", result.Status.String())
 			}

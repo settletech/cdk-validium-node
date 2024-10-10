@@ -70,4 +70,8 @@ type stateInterface interface {
 	GetVirtualBatchParentHash(ctx context.Context, batchNumber uint64, dbTx pgx.Tx) (common.Hash, error)
 	GetForcedBatchParentHash(ctx context.Context, forcedBatchNumber uint64, dbTx pgx.Tx) (common.Hash, error)
 	GetVirtualBatch(ctx context.Context, batchNumber uint64, dbTx pgx.Tx) (*state.VirtualBatch, error)
+	// Rollback code
+	GetBlockNumberByBatch(ctx context.Context, batchNumber uint64, dbTx pgx.Tx) (uint64, error)
+	GetBatchNumberAccHash(ctx context.Context, accInputHash common.Hash, dbTx pgx.Tx) (uint64, error)
+	ResetBatches(ctx context.Context, batchNumber uint64, dbTx pgx.Tx) error
 }

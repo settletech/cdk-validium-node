@@ -163,4 +163,8 @@ type storage interface {
 	UpdateBatchAsChecked(ctx context.Context, batchNumber uint64, dbTx pgx.Tx) error
 	GetNotCheckedBatches(ctx context.Context, dbTx pgx.Tx) ([]*Batch, error)
 	GetLastL2BlockByBatchNumber(ctx context.Context, batchNumber uint64, dbTx pgx.Tx) (*L2Block, error)
+	// Rollback code
+	GetBlockNumberByBatch(ctx context.Context, batchNumber uint64, dbTx pgx.Tx) (uint64, error)
+	GetBatchNumberAccHash(ctx context.Context, accInputHash common.Hash, dbTx pgx.Tx) (uint64, error)
+	ResetBatches(ctx context.Context, batchNumber uint64, dbTx pgx.Tx) error
 }
