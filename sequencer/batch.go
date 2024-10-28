@@ -119,8 +119,6 @@ func (f *finalizer) initWIPBatch(ctx context.Context) {
 
 	isClosed := !lastStateBatch.WIP
 
-	// log.Infof("batch %d isClosed: %v", lastBatchNum, isClosed)
-
 	if isClosed { //if the last batch is close then open a new wip batch
 		if lastStateBatch.BatchNumber+1 == f.cfg.HaltOnBatchNumber {
 			f.Halt(ctx, fmt.Errorf("finalizer reached stop sequencer on batch number: %d", f.cfg.HaltOnBatchNumber), false)

@@ -264,13 +264,13 @@ func (s *SequenceSender) getSequencesToSend(ctx context.Context) ([]types.Sequen
 		log.Info("Current batch: %d, IsForced: %v", currentBatchNumToSequence, batch.ForcedBatchNum)
 
 		if batch.ForcedBatchNum != nil {
-			// Rollback Test Code
+			// Rollback Code
 			log.Info("Forced: Sequences Length: %v", len(sequences))
 			if len(sequences) > 0 {
 				return sequences, nil
 			}
-			// ------ Rollback -------------
 
+			// ------ Rollback -------------
 			forcedBatch, err := s.state.GetForcedBatch(ctx, *batch.ForcedBatchNum, nil)
 			if err != nil {
 				return nil, err
@@ -288,7 +288,7 @@ func (s *SequenceSender) getSequencesToSend(ctx context.Context) ([]types.Sequen
 			// Set sequence timestamps as the forced batch timestamp
 			seq.LastL2BLockTimestamp = seq.ForcedBatchTimestamp
 
-			//Rollback Test Code
+			//Rollback Code
 			sequences = append(sequences, seq)
 			return sequences, nil
 			// --------- Rollback -----------
@@ -331,6 +331,7 @@ func (s *SequenceSender) getSequencesToSend(ctx context.Context) ([]types.Sequen
 		log.Warnf("failed to get last l1 interaction time, err: %v. Sending sequences as a conservative approach", err)
 		return sequences, nil
 	}
+
 	if lastBatchVirtualizationTime.Before(time.Now().Add(-s.cfg.LastBatchVirtualizationTimeMaxWaitPeriod.Duration)) {
 		// TODO: implement check profitability
 		// if s.checker.IsSendSequencesProfitable(new(big.Int).SetUint64(estimatedGas), sequences) {

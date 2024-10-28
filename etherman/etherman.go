@@ -60,6 +60,7 @@ var (
 	proveNonDeterministicPendingStateSignatureHash = crypto.Keccak256Hash([]byte("ProveNonDeterministicPendingState(bytes32,bytes32)")) // Used in oldZkEvm as well
 	consolidatePendingStateSignatureHash           = crypto.Keccak256Hash([]byte("ConsolidatePendingState(uint32,uint64,bytes32,bytes32,uint64)"))
 	verifyBatchesTrustedAggregatorSignatureHash    = crypto.Keccak256Hash([]byte("VerifyBatchesTrustedAggregator(uint32,uint64,bytes32,bytes32,address)"))
+	verifyBatchesOnRevertSignatureHash             = crypto.Keccak256Hash([]byte("verifyBatchesOnRevert(uint32,uint64,bytes32,bytes32,address)"))
 	rollupManagerVerifyBatchesSignatureHash        = crypto.Keccak256Hash([]byte("VerifyBatches(uint32,uint64,bytes32,bytes32,address)"))
 	onSequenceBatchesSignatureHash                 = crypto.Keccak256Hash([]byte("OnSequenceBatches(uint32,uint64)"))
 	updateRollupSignatureHash                      = crypto.Keccak256Hash([]byte("UpdateRollup(uint32,uint32,uint64)"))
@@ -135,6 +136,8 @@ func SequencedBatchesSigHash() common.Hash { return sequenceBatchesSignatureHash
 
 // TrustedVerifyBatchesSigHash returns the hash for the `TrustedVerifyBatches` event.
 func TrustedVerifyBatchesSigHash() common.Hash { return verifyBatchesTrustedAggregatorSignatureHash }
+
+func VerifyBatchesOnRevertSigHash() common.Hash { return verifyBatchesOnRevertSignatureHash }
 
 // EventOrder is the the type used to identify the events order
 type EventOrder string
@@ -1076,17 +1079,49 @@ func (etherMan *Client) BuildTrustedVerifyBatchesTxData(lastVerifiedBatch, newVe
 
 	const pendStateNum = 0 // TODO hardcoded for now until we implement the pending state feature
 
-	tx, err := etherMan.RollupManager.VerifyBatchesTrustedAggregator(
-		&opts,
-		etherMan.RollupID,
-		pendStateNum,
-		lastVerifiedBatch,
-		newVerifiedBatch,
-		newLocalExitRoot,
-		newStateRoot,
-		beneficiary,
-		proof,
-	)
+	// Rollback code
+	var tx *types.Transaction
+	//var err error
+	var exitMode, revertMode bool
+
+	exitMode, err = etherMan.GetIsExitMode()
+	if err != nil {
+		log.Infof("exitMode: %v, error: %v", exitMode, err)
+		return nil, nil, err
+	}
+
+	revertMode, err = etherMan.GetIsRevertModeActive()
+	if err != nil {
+		log.Infof("revertMode: %v, error: %v", revertMode, err)
+		return nil, nil, err
+	}
+
+	if !revertMode && !exitMode {
+		tx, err = etherMan.RollupManager.VerifyBatchesTrustedAggregator(
+			&opts,
+			etherMan.RollupID,
+			pendStateNum,
+			lastVerifiedBatch,
+			newVerifiedBatch,
+			newLocalExitRoot,
+			newStateRoot,
+			beneficiary,
+			proof,
+		)
+	} else {
+		tx, err = etherMan.RollupManager.VerifyBatchesOnRevert(
+			&opts,
+			etherMan.RollupID,
+			pendStateNum,
+			lastVerifiedBatch,
+			newVerifiedBatch,
+			newLocalExitRoot,
+			newStateRoot,
+			beneficiary,
+			proof,
+		)
+	}
+	//
 	if err != nil {
 		if parsedErr, ok := tryParseError(err); ok {
 			err = parsedErr

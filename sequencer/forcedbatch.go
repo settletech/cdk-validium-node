@@ -63,7 +63,7 @@ func (f *finalizer) processForcedBatch(ctx context.Context, forcedBatch state.Fo
 		log.Errorf("failed to begin state transaction for process forced batch %d, error: %v", forcedBatch.ForcedBatchNumber, err)
 		return lastBatchNumber, stateRoot, err
 	}
-
+	// Rollback code
 	// Helper function in case we get an error when processing the forced batch
 	rollbackOnError := func(retError error) (newLastBatchNumber uint64, newStateRoot common.Hash, retErr error) {
 		err := dbTx.Rollback(ctx)
@@ -235,13 +235,13 @@ func (f *finalizer) checkForcedBatches(ctx context.Context) {
 		time.Sleep(f.cfg.ForcedBatchesCheckInterval.Duration)
 
 		// Rollback code
-		result, _ := f.etherman.GetIsRevertBatchesExecuted()
+		/*result, _ := f.etherman.GetIsRevertBatchesExecuted()
 
 		if !result {
 			continue
 		}
 		//
-		log.Info("Rollback In check Forced Batches: %v", result)
+		log.Info("Rollback In check Forced Batches: %v", result) */
 
 		if f.lastForcedBatchNum == 0 {
 			lastTrustedForcedBatchNum, err := f.stateIntf.GetLastTrustedForcedBatchNumber(ctx, nil)

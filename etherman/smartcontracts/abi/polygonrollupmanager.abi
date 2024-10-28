@@ -226,6 +226,11 @@
       "type": "error"
     },
     {
+      "inputs": [],
+      "name": "VerifyOnRevertNotPossible",
+      "type": "error"
+    },
+    {
       "anonymous": false,
       "inputs": [
         {
@@ -834,6 +839,19 @@
           "internalType": "uint64",
           "name": "",
           "type": "uint64"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "TEST_VAR",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -1552,26 +1570,6 @@
           "internalType": "bytes32",
           "name": "newAccInputHash",
           "type": "bytes32"
-        },
-        {
-          "internalType": "bytes32",
-          "name": "newLocalExitRoot",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "bytes32",
-          "name": "newStateRoot",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "address",
-          "name": "beneficiary",
-          "type": "address"
-        },
-        {
-          "internalType": "bytes32[24]",
-          "name": "proof",
-          "type": "bytes32[24]"
         }
       ],
       "name": "onExecuteAllForcedTransactions",
@@ -2179,6 +2177,54 @@
         }
       ],
       "name": "verifyBatches",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint32",
+          "name": "rollupID",
+          "type": "uint32"
+        },
+        {
+          "internalType": "uint64",
+          "name": "pendingStateNum",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint64",
+          "name": "initNumBatch",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint64",
+          "name": "finalNewBatch",
+          "type": "uint64"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "newLocalExitRoot",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "newStateRoot",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "beneficiary",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes32[24]",
+          "name": "proof",
+          "type": "bytes32[24]"
+        }
+      ],
+      "name": "verifyBatchesOnRevert",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
