@@ -42,6 +42,7 @@ func (f *finalizer) processForcedBatches(ctx context.Context, lastBatchNumber ui
 
 		log.Infof("processing forced batch %d, lastBatchNumber: %d, stateRoot: %s", forcedBatchToProcess.ForcedBatchNumber, lastBatchNumber, stateRoot.String())
 		lastBatchNumber, stateRoot, err = f.processForcedBatch(ctx, forcedBatchToProcess, lastBatchNumber, stateRoot)
+		log.Infof("Forced batch processed: %v", lastBatchNumber)
 
 		if err != nil {
 			log.Errorf("error when processing forced batch %d, error: %v", forcedBatchToProcess.ForcedBatchNumber, err)
@@ -58,12 +59,13 @@ func (f *finalizer) processForcedBatches(ctx context.Context, lastBatchNumber ui
 }
 
 func (f *finalizer) processForcedBatch(ctx context.Context, forcedBatch state.ForcedBatch, lastBatchNumber uint64, stateRoot common.Hash) (newLastBatchNumber uint64, newStateRoot common.Hash, retErr error) {
+
 	dbTx, err := f.stateIntf.BeginStateTransaction(ctx)
 	if err != nil {
 		log.Errorf("failed to begin state transaction for process forced batch %d, error: %v", forcedBatch.ForcedBatchNumber, err)
 		return lastBatchNumber, stateRoot, err
 	}
-	// Rollback code
+
 	// Helper function in case we get an error when processing the forced batch
 	rollbackOnError := func(retError error) (newLastBatchNumber uint64, newStateRoot common.Hash, retErr error) {
 		err := dbTx.Rollback(ctx)
@@ -107,9 +109,10 @@ func (f *finalizer) processForcedBatch(ctx context.Context, forcedBatch state.Fo
 		Caller:                  stateMetrics.DiscardCallerLabel,
 	}
 
+	// Garbage input error
 	batchResponse, err := f.stateIntf.ProcessBatchV2(ctx, batchRequest, true)
 	if err != nil {
-		return rollbackOnError(fmt.Errorf("failed to process/execute forced batch %d, error: %v", forcedBatch.ForcedBatchNumber, err))
+		return rollbackOnError(fmt.Errorf("failed to process/execute forced batch (GI) %d, error: %v", forcedBatch.ForcedBatchNumber, err))
 	}
 
 	// Close state batch
@@ -230,18 +233,21 @@ func (f *finalizer) setNextForcedBatchDeadline() {
 }
 
 func (f *finalizer) checkForcedBatches(ctx context.Context) {
-	log.Info("Rollback log: checkForcedBatches %v", f.cfg.ForcedBatchesCheckInterval.Duration)
 	for {
 		time.Sleep(f.cfg.ForcedBatchesCheckInterval.Duration)
+		// Rollback code - Malicious Sequencer
+		/*result, err := f.etherman.GetIsRevertBatchesExecuted()
 
-		// Rollback code
-		/*result, _ := f.etherman.GetIsRevertBatchesExecuted()
+		if err != nil {
+			log.Infof("Rollback - Revert batches validation error!")
+			continue
+		}
 
 		if !result {
 			continue
-		}
+		} */
 		//
-		log.Info("Rollback In check Forced Batches: %v", result) */
+		//log.Info("Rollback In check Forced Batches: %v", result)
 
 		if f.lastForcedBatchNum == 0 {
 			lastTrustedForcedBatchNum, err := f.stateIntf.GetLastTrustedForcedBatchNumber(ctx, nil)
@@ -263,13 +269,14 @@ func (f *finalizer) checkForcedBatches(ctx context.Context) {
 		blockNumber := lastBlock.BlockNumber
 
 		maxBlockNumber := uint64(0)
-		// Rollback code
+		// Reduce block confirmation to speed up the process
 		finalityNumberOfBlocks := f.cfg.ForcedBatchesL1BlockConfirmations
-		//finalityNumberOfBlocks := uint64(4)
+
 		if finalityNumberOfBlocks <= blockNumber {
 			maxBlockNumber = blockNumber - finalityNumberOfBlocks
 		}
 
+		log.Infof("lastForcedBatchNum: %v", f.lastForcedBatchNum)
 		forcedBatches, err := f.stateIntf.GetForcedBatchesSince(ctx, f.lastForcedBatchNum, maxBlockNumber, nil)
 		if err != nil {
 			log.Errorf("error checking forced batches, error: %v", err)
@@ -277,11 +284,13 @@ func (f *finalizer) checkForcedBatches(ctx context.Context) {
 		}
 
 		for _, forcedBatch := range forcedBatches {
-			log.Info("Rollback finalizer received forced batch at block: %v enter", forcedBatch.BlockNumber)
 			log.Debugf("finalizer received forced batch at block number: %d", forcedBatch.BlockNumber)
 
 			f.nextForcedBatchesMux.Lock()
 			f.nextForcedBatches = f.sortForcedBatches(append(f.nextForcedBatches, *forcedBatch))
+
+			//log.Infof("Forced Batches f.nextForcedBatches: %v", f.nextForcedBatches)
+
 			if f.nextForcedBatchDeadline == 0 {
 				f.setNextForcedBatchDeadline()
 			}

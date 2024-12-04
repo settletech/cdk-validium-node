@@ -145,6 +145,7 @@ func serializeUint32(value uint32) []byte {
 
 // DecodeBatchV2 decodes a batch of transactions from a byte slice.
 func DecodeBatchV2(txsData []byte) (*BatchRawV2, error) {
+	log.Infof("DecodeBatchV2 Batch of Transactions")
 	// The transactions is not RLP encoded. Is the raw bytes in this form: 1 byte for the transaction type (always 0b for changeL2Block) + 4 bytes for deltaTimestamp + for bytes for indexL1InfoTree
 	var err error
 	var blocks []L2BlockRaw
@@ -157,6 +158,8 @@ func DecodeBatchV2(txsData []byte) (*BatchRawV2, error) {
 				blocks = append(blocks, *currentBlock)
 			}
 			pos, currentBlock, err = decodeBlockHeader(txsData, pos+1)
+			log.Infof("pos: %d can't decode new BlockHeader: %w", pos, err)
+
 			if err != nil {
 				return nil, fmt.Errorf("pos: %d can't decode new BlockHeader: %w", pos, err)
 			}
@@ -165,16 +168,19 @@ func DecodeBatchV2(txsData []byte) (*BatchRawV2, error) {
 		default:
 			if currentBlock == nil {
 				_, _, err := decodeTxRLP(txsData, pos)
+				log.Infof("decodeTxRLP err: %v", err)
 				if err == nil {
 					// There is no changeL2Block but have a valid RLP transaction
 					return nil, ErrBatchV2DontStartWithChangeL2Block
 				} else {
 					// No changeL2Block and no valid RLP transaction
+					log.Infof("no ChangeL2Block neither valid Tx, batch malformed : %w", ErrInvalidBatchV2)
 					return nil, fmt.Errorf("no ChangeL2Block neither valid Tx, batch malformed : %w", ErrInvalidBatchV2)
 				}
 			}
 			var tx *L2TxRaw
 			pos, tx, err = decodeTxRLP(txsData, pos)
+			log.Infof("can't decode transactions: %w, decode pos: %v, decode tx: %v", err, pos, tx)
 			if err != nil {
 				return nil, fmt.Errorf("can't decode transactions: %w", err)
 			}
@@ -192,11 +198,13 @@ func DecodeBatchV2(txsData []byte) (*BatchRawV2, error) {
 // Is forbidden changeL2Block, so are just the set of transactions
 func DecodeForcedBatchV2(txsData []byte) (*ForcedBatchRawV2, error) {
 	txs, _, efficiencyPercentages, err := DecodeTxs(txsData, FORKID_ETROG)
+	log.Infof("DecodeTxs txs: %v, efficiencyPercentages %v, err: %v", txs, efficiencyPercentages, err)
 	if err != nil {
 		return nil, err
 	}
 	// Sanity check, this should never happen
 	if len(efficiencyPercentages) != len(txs) {
+		log.Infof("error decoding len(efficiencyPercentages) != len(txs). len(efficiencyPercentages)=%d, len(txs)=%d : %w", len(efficiencyPercentages), len(txs), ErrInvalidRLP)
 		return nil, fmt.Errorf("error decoding len(efficiencyPercentages) != len(txs). len(efficiencyPercentages)=%d, len(txs)=%d : %w", len(efficiencyPercentages), len(txs), ErrInvalidRLP)
 	}
 	forcedBatch := ForcedBatchRawV2{}
@@ -216,10 +224,12 @@ func decodeBlockHeader(txsData []byte, pos int) (int, *L2BlockRaw, error) {
 	var err error
 	currentBlock := &L2BlockRaw{}
 	pos, currentBlock.DeltaTimestamp, err = deserializeUint32(txsData, pos)
+	log.Infof("decodeBlockHeader pos %v, currentBlock.DeltaTimestamp %v, err %v", pos, currentBlock.DeltaTimestamp, err)
 	if err != nil {
 		return 0, nil, fmt.Errorf("can't get deltaTimestamp: %w", err)
 	}
 	pos, currentBlock.IndexL1InfoTree, err = deserializeUint32(txsData, pos)
+	log.Infof("deserializeUint32 pos %v, currentBlock.IndexL1InfoTree %v, err %v", pos, currentBlock.IndexL1InfoTree, err)
 	if err != nil {
 		return 0, nil, fmt.Errorf("can't get leafIndex: %w", err)
 	}
@@ -228,6 +238,7 @@ func decodeBlockHeader(txsData []byte, pos int) (int, *L2BlockRaw, error) {
 }
 
 func decodeTxRLP(txsData []byte, offset int) (int, *L2TxRaw, error) {
+	log.Infof("enter decodeTxRLP")
 	var err error
 	length, err := decodeRLPListLengthFromOffset(txsData, offset)
 	if err != nil {
@@ -266,7 +277,9 @@ func decodeTxRLP(txsData []byte, offset int) (int, *L2TxRaw, error) {
 }
 
 func deserializeUint32(txsData []byte, pos int) (int, uint32, error) {
+	log.Infof("inside deserializeUint32")
 	if len(txsData)-pos < 4 { // nolint:gomnd
+		log.Infof("can't get u32 because not enough data: %w", ErrInvalidBatchV2)
 		return 0, 0, fmt.Errorf("can't get u32 because not enough data: %w", ErrInvalidBatchV2)
 	}
 	return pos + 4, uint32(txsData[pos])<<24 | uint32(txsData[pos+1])<<16 | uint32(txsData[pos+2])<<8 | uint32(txsData[pos+3]), nil // nolint:gomnd
@@ -276,6 +289,7 @@ func deserializeUint32(txsData []byte, pos int) (int, uint32, error) {
 // ex:
 // 0xc0 -> empty data -> 1 byte because it include the 0xc0
 func decodeRLPListLengthFromOffset(txsData []byte, offset int) (uint64, error) {
+	log.Infof("enter decodeRLPListLengthFromOffset")
 	txDataLength := uint64(len(txsData))
 	num := uint64(txsData[offset])
 	if num < c0 { // c0 -> is a empty data

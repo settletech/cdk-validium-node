@@ -167,12 +167,12 @@ func (s *State) ExecuteBatchV2(ctx context.Context, batch Batch, L1InfoTreeRoot 
 
 	processBatchResponse, err := s.executorClient.ProcessBatchV2(ctx, processBatchRequest)
 	if err != nil {
-		log.Infof("RB: Process Batch Error processing batch: %v", err)
+		// log.Infof("RollBack: Process Batch Error processing batch: %v", err)
 		log.Error("error executing batch: ", err)
 		return nil, err
 	} else if processBatchResponse != nil && processBatchResponse.Error != executor.ExecutorError_EXECUTOR_ERROR_NO_ERROR {
 		err = executor.ExecutorErr(processBatchResponse.Error)
-		log.Infof("RB: Executor Error processing batch: %v", err)
+		// log.Infof("RollBack: Executor Error processing batch: %v", err)
 		s.eventLog.LogExecutorErrorV2(ctx, processBatchResponse.Error, processBatchRequest)
 	}
 
@@ -292,6 +292,7 @@ func (s *State) sendBatchRequestToExecutorV2(ctx context.Context, batchRequest *
 	log.Debugf("executor batch %d request, %s", newBatchNum, batchRequestLog)
 
 	now := time.Now()
+	// Error Here!
 	batchResponse, err := s.executorClient.ProcessBatchV2(ctx, batchRequest)
 	elapsed := time.Since(now)
 
@@ -301,9 +302,14 @@ func (s *State) sendBatchRequestToExecutorV2(ctx context.Context, batchRequest *
 	}
 
 	if err != nil {
+		log.Infof("error executor ProcessBatchV2: %v", err)
+		log.Infof("error executor ProcessBatchV2: %s", err.Error())
+		log.Infof("error executor ProcessBatchV2 response: %v", batchResponse)
+
 		log.Errorf("error executor ProcessBatchV2: %v", err)
 		log.Errorf("error executor ProcessBatchV2: %s", err.Error())
 		log.Errorf("error executor ProcessBatchV2 response: %v", batchResponse)
+		err = nil
 	} else {
 		batchResponseToString := processBatchResponseToString(newBatchNum, batchResponse, elapsed)
 		if batchResponse.Error != executor.ExecutorError_EXECUTOR_ERROR_NO_ERROR {
@@ -413,6 +419,7 @@ func (s *State) ProcessAndStoreClosedBatchV2(ctx context.Context, processingCtx 
 			}
 		}
 	}
+
 	return common.BytesToHash(processed.NewStateRoot), processed.FlushId, processed.ProverId, s.CloseBatchInStorage(ctx, ProcessingReceipt{
 		BatchNumber:   processingCtx.BatchNumber,
 		StateRoot:     processedBatch.NewStateRoot,

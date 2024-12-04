@@ -195,6 +195,7 @@ func (s *SequenceSender) tryToSendSequence(ctx context.Context) {
 	}
 
 	firstSequence := sequences[0]
+	log.Infof("dataAvailabilityMessage: %v", dataAvailabilityMessage)
 	to, data, err := s.etherman.BuildSequenceBatchesTxData(s.cfg.SenderAddress, sequences, uint64(lastSequence.LastL2BLockTimestamp), firstSequence.BatchNumber-1, s.cfg.L2Coinbase, dataAvailabilityMessage)
 	if err != nil {
 		log.Error("error estimating new sequenceBatches to add to eth tx manager: ", err)
@@ -286,7 +287,21 @@ func (s *SequenceSender) getSequencesToSend(ctx context.Context) ([]types.Sequen
 			seq.ForcedBatchTimestamp = forcedBatch.ForcedAt.Unix()
 			seq.PrevBlockHash = fbL1Block.ParentHash
 			// Set sequence timestamps as the forced batch timestamp
-			seq.LastL2BLockTimestamp = seq.ForcedBatchTimestamp
+			// seq.LastL2BLockTimestamp = seq.ForcedBatchTimestamp
+
+			////
+			lastL2Block, err := s.state.GetLastL2BlockByBatchNumber(ctx, currentBatchNumToSequence, nil)
+			if err != nil {
+				return nil, err
+			}
+			if lastL2Block == nil {
+				return nil, fmt.Errorf("no last L2 block returned from the state for batch %d", currentBatchNumToSequence)
+			}
+
+			// Get timestamp of the last L2 block in the sequence
+			seq.LastL2BLockTimestamp = lastL2Block.ReceivedAt.Unix()
+			////
+			//seq.LastL2BLockTimestamp = seq.ForcedBatchTimestamp
 
 			//Rollback Code
 			sequences = append(sequences, seq)

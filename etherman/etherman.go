@@ -1314,7 +1314,7 @@ func (etherMan *Client) sequencedBatchesEvent(ctx context.Context, vLog types.Lo
 			bytes.Equal(methodId, methodIDExecuteAllForcedTransactionsElderberry) {
 			sequences, err = decodeSequencesElderberry(tx.Data(), sb.NumBatch, msg.From, vLog.TxHash, msg.Nonce, sb.L1InfoRoot, etherMan.da)
 			if err != nil {
-				return fmt.Errorf("error decoding the sequences (elderberry): %v", err)
+				return fmt.Errorf("error decoding the sequences (elderberry): %v, NumBatch: %v", err, sb.NumBatch)
 			}
 		} else {
 			return fmt.Errorf("error decoding the sequences: methodId %s unknown", common.Bytes2Hex(methodId))

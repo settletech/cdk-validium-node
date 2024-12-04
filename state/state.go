@@ -7,6 +7,7 @@ import (
 
 	"github.com/0xPolygonHermez/zkevm-node/event"
 	"github.com/0xPolygonHermez/zkevm-node/l1infotree"
+	"github.com/0xPolygonHermez/zkevm-node/log"
 	"github.com/0xPolygonHermez/zkevm-node/merkletree"
 	"github.com/0xPolygonHermez/zkevm-node/state/metrics"
 	"github.com/0xPolygonHermez/zkevm-node/state/runtime/executor"
@@ -65,6 +66,7 @@ func NewState(cfg Config, storage storage, executorClient executor.ExecutorServi
 // BeginStateTransaction starts a state transaction
 func (s *State) BeginStateTransaction(ctx context.Context) (pgx.Tx, error) {
 	tx, err := s.Begin(ctx)
+	log.Infof("Begin tx: %v, tx error: %v", tx, err)
 	if err != nil {
 		return nil, err
 	}

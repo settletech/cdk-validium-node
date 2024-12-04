@@ -166,6 +166,7 @@ func EncodeUnsignedTransaction(tx types.Transaction, chainID uint64, forcedNonce
 
 // DecodeTxs extracts Transactions for its encoded form
 func DecodeTxs(txsData []byte, forkID uint64) ([]types.Transaction, []byte, []uint8, error) {
+	log.Infof("Entering DecodeTxs!")
 	// Process coded txs
 	var pos uint64
 	var txs []types.Transaction

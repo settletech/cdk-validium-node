@@ -311,75 +311,96 @@ func (f *finalizer) finalizeBatches(ctx context.Context) {
 	log.Debug("finalizer init loop")
 	showNotFoundTxLog := true // used to log debug only the first message when there is no txs to process
 	for {
-		// We have reached the L2 block time, we need to close the current L2 block and open a new one
-		if f.wipL2Block.timestamp+uint64(f.cfg.L2BlockMaxDeltaTimestamp.Seconds()) <= uint64(time.Now().Unix()) {
-			f.finalizeWIPL2Block(ctx)
-		}
+		// Rollback code - Stop Batch generation
+		f.nextForcedBatchesMux.Lock()
+		processForcedBatches := len(f.nextForcedBatches) > 0
+		//log.Infof("f.nextForcedBatches: %v", f.nextForcedBatches)
+		f.nextForcedBatchesMux.Unlock()
 
-		tx, err := f.workerIntf.GetBestFittingTx(f.wipBatch.imRemainingResources)
-
-		// If we have txs pending to process but none of them fits into the wip batch, we close the wip batch and open a new one
-		if err == ErrNoFittingTransaction {
-			f.finalizeWIPBatch(ctx, state.NoTxFitsClosingReason)
+		isRevertMode, err := f.etherman.GetIsRevertModeActive()
+		if err != nil {
+			log.Infof("failed to get if revert mode is executed, error: %v", err)
 			continue
 		}
 
-		if tx != nil {
-			showNotFoundTxLog = true
+		isExitMode, err := f.etherman.GetIsExitMode()
+		if err != nil {
+			log.Infof("failed to get if exit mode is executed, error: %v", err)
+			continue
+		}
 
-			firstTxProcess := true
+		if processForcedBatches || !(isRevertMode || isExitMode) {
+			// We have reached the L2 block time, we need to close the current L2 block and open a new one
+			if f.wipL2Block.timestamp+uint64(f.cfg.L2BlockMaxDeltaTimestamp.Seconds()) <= uint64(time.Now().Unix()) {
+				f.finalizeWIPL2Block(ctx)
+			}
 
-			for {
-				var err error
-				_, err = f.processTransaction(ctx, tx, firstTxProcess)
-				if err != nil {
-					if err == ErrEffectiveGasPriceReprocess {
-						firstTxProcess = false
-						log.Infof("reprocessing tx %s because of effective gas price calculation", tx.HashStr)
-						continue
-					} else if err == ErrBatchResourceOverFlow {
-						log.Infof("skipping tx %s due to a batch resource overflow", tx.HashStr)
-						break
-					} else {
-						log.Errorf("failed to process tx %s, error: %v", err)
-						break
+			tx, err := f.workerIntf.GetBestFittingTx(f.wipBatch.imRemainingResources)
+			// If we have txs pending to process but none of them fits into the wip batch, we close the wip batch and open a new one
+			if err == ErrNoFittingTransaction {
+				f.finalizeWIPBatch(ctx, state.NoTxFitsClosingReason)
+				continue
+			}
+			if tx != nil {
+				showNotFoundTxLog = true
+
+				firstTxProcess := true
+
+				for {
+					var err error
+					_, err = f.processTransaction(ctx, tx, firstTxProcess)
+					if err != nil {
+						if err == ErrEffectiveGasPriceReprocess {
+							firstTxProcess = false
+							log.Infof("reprocessing tx %s because of effective gas price calculation", tx.HashStr)
+							continue
+						} else if err == ErrBatchResourceOverFlow {
+							log.Infof("skipping tx %s due to a batch resource overflow", tx.HashStr)
+							break
+						} else {
+							log.Errorf("failed to process tx %s, error: %v", err)
+							break
+						}
 					}
+					break
 				}
-				break
+			} else {
+				idleTime := time.Now()
+
+				if showNotFoundTxLog {
+					log.Debug("no transactions to be processed. Waiting...")
+					showNotFoundTxLog = false
+				}
+
+				// wait for new ready txs in worker
+				f.workerReadyTxsCond.L.Lock()
+				f.workerReadyTxsCond.WaitOrTimeout(f.cfg.NewTxsWaitInterval.Duration)
+				f.workerReadyTxsCond.L.Unlock()
+
+				// Increase idle time of the WIP L2Block
+				f.wipL2Block.metrics.idleTime += time.Since(idleTime)
+			}
+
+			if f.haltFinalizer.Load() {
+				// There is a fatal error and we need to halt the finalizer and stop processing new txs
+				for {
+					time.Sleep(5 * time.Second) //nolint:gomnd
+				}
+			}
+
+			// Check if we must finalize the batch due to a closing reason (resources exhausted, max txs, timestamp resolution, forced batches deadline)
+			if finalize, closeReason := f.checkIfFinalizeBatch(); finalize {
+				f.finalizeWIPBatch(ctx, closeReason)
+			}
+
+			if err := ctx.Err(); err != nil {
+				log.Errorf("stopping finalizer because of context, error: %v", err)
+				return
 			}
 		} else {
-			idleTime := time.Now()
-
-			if showNotFoundTxLog {
-				log.Debug("no transactions to be processed. Waiting...")
-				showNotFoundTxLog = false
-			}
-
-			// wait for new ready txs in worker
-			f.workerReadyTxsCond.L.Lock()
-			f.workerReadyTxsCond.WaitOrTimeout(f.cfg.NewTxsWaitInterval.Duration)
-			f.workerReadyTxsCond.L.Unlock()
-
-			// Increase idle time of the WIP L2Block
-			f.wipL2Block.metrics.idleTime += time.Since(idleTime)
+			time.Sleep(f.cfg.ForcedBatchesCheckInterval.Duration / 4)
 		}
 
-		if f.haltFinalizer.Load() {
-			// There is a fatal error and we need to halt the finalizer and stop processing new txs
-			for {
-				time.Sleep(5 * time.Second) //nolint:gomnd
-			}
-		}
-
-		// Check if we must finalize the batch due to a closing reason (resources exhausted, max txs, timestamp resolution, forced batches deadline)
-		if finalize, closeReason := f.checkIfFinalizeBatch(); finalize {
-			f.finalizeWIPBatch(ctx, closeReason)
-		}
-
-		if err := ctx.Err(); err != nil {
-			log.Errorf("stopping finalizer because of context, error: %v", err)
-			return
-		}
 	}
 }
 

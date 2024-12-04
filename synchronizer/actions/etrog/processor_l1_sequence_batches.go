@@ -93,8 +93,8 @@ func (p *ProcessorL1SequenceBatchesEtrog) ProcessSequenceBatches(ctx context.Con
 		batch := state.Batch{
 			BatchNumber: sbatch.BatchNumber,
 			// This timestamp now is the timeLimit. It can't be the one virtual.BatchTimestamp
-			//   because when sync from trusted we don't now the real BatchTimestamp and
-			//   will fails the comparation of batch time >= than previous one.
+			// because when sync from trusted we don't now the real BatchTimestamp and
+			// will fails the comparation of batch time >= than previous one.
 			Timestamp:   now,
 			Coinbase:    sbatch.Coinbase,
 			BatchL2Data: sbatch.PolygonRollupBaseEtrogBatchData.Transactions,
@@ -147,7 +147,9 @@ func (p *ProcessorL1SequenceBatchesEtrog) ProcessSequenceBatches(ctx context.Con
 			log.Debug("Setting forcedBatchNum: ", forcedBatches[0].ForcedBatchNumber)
 			batch.ForcedBatchNum = &forcedBatches[0].ForcedBatchNumber
 			batch.GlobalExitRoot = sbatch.PolygonRollupBaseEtrogBatchData.ForcedGlobalExitRoot
+			// Rollback Code
 			tstampLimit := forcedBatches[0].ForcedAt
+			// tstampLimit := &l1BlockTimestamp
 			txs := forcedBatches[0].RawTxsData
 			// Rollback Code
 			var fBHL1 common.Hash = sbatch.PolygonRollupBaseEtrogBatchData.ForcedBlockHashL1

@@ -72,6 +72,7 @@ func (s *State) convertToProcessBatchResponseV2(batchResponse *executor.ProcessB
 func (s *State) convertToProcessBlockResponseV2(responses []*executor.ProcessBlockResponseV2) ([]*ProcessBlockResponse, bool, bool, error) {
 	isRomLevelError := false
 	isRomOOCError := false
+	log.Infof("convertToProcessBlockResponseV2")
 
 	results := make([]*ProcessBlockResponse, 0, len(responses))
 	for _, response := range responses {
@@ -107,6 +108,7 @@ func (s *State) convertToProcessTransactionResponseV2(responses []*executor.Proc
 	isRomLevelError := false
 	isRomOOCError := false
 
+	log.Infof("entering convertToProcessTransactionResponseV2")
 	results := make([]*ProcessTransactionResponse, 0, len(responses))
 
 	for _, response := range responses {
@@ -146,9 +148,12 @@ func (s *State) convertToProcessTransactionResponseV2(responses []*executor.Proc
 		result.Status = response.Status
 
 		var tx *types.Transaction
+		log.Infof("response.Error: %v", response.Error)
 		if response.Error != executor.RomError_ROM_ERROR_INVALID_RLP {
 			if len(response.GetRlpTx()) > 0 {
 				tx, err = DecodeTx(common.Bytes2Hex(response.GetRlpTx()))
+				log.Infof("if len(response.GetRlpTx()) Decode Tx: %v, Decode error: %v", tx, err)
+
 				if err != nil {
 					timestamp := time.Now()
 					log.Errorf("error decoding rlp returned by executor %v at %v", err, timestamp)
@@ -173,6 +178,7 @@ func (s *State) convertToProcessTransactionResponseV2(responses []*executor.Proc
 			}
 		} else {
 			log.Warnf("ROM_ERROR_INVALID_RLP returned by the executor")
+			log.Infof("ROM_ERROR_INVALID_RLP returned by the executor")
 		}
 
 		if tx != nil {

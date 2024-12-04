@@ -165,10 +165,12 @@ func (f *finalizer) closeAndOpenNewWIPBatch(ctx context.Context, closeReason sta
 	f.nextForcedBatchesMux.Lock()
 	// Rollback code
 	processForcedBatches := len(f.nextForcedBatches) > 0
+	//log.Infof("Close and Open f.nextForcedBatches: %v", f.nextForcedBatches)
 	f.nextForcedBatchesMux.Unlock()
 
 	// If we will process forced batches after we close the wip batch then we must close the current wip L2 block,
 	// since the processForcedBatches function needs to create new L2 blocks (cannot "reuse" the current wip L2 block if it's empty)
+
 	if processForcedBatches {
 		log.Debugf("processForcedBatches is true")
 		f.closeWIPL2Block(ctx)
@@ -218,33 +220,47 @@ func (f *finalizer) closeAndOpenNewWIPBatch(ctx context.Context, closeReason sta
 	// Process forced batches
 	if processForcedBatches {
 		log.Infof("Rollback: Forced batch received but not process!")
-		// Rollback code
 		lastBatchNumber, stateRoot = f.processForcedBatches(ctx, lastBatchNumber, stateRoot)
 		log.Infof("batch.go processForcedBatches is True and lastBatchNumber is: %d", lastBatchNumber)
 		// We must init/reset the wip L2 block from the state since processForcedBatches can created new L2 blocks
 		f.initWIPL2Block(ctx)
 	}
-
-	f.wipBatch, err = f.openNewWIPBatch(ctx, lastBatchNumber+1, stateRoot)
-
+	// Rollback code - Stop Batch Generation
+	isRevertMode, err := f.etherman.GetIsRevertModeActive()
 	if err != nil {
-		log.Error("openNewWIPBatch() failed ", err)
-		return fmt.Errorf("failed to open new wip batch, error: %v", err)
+		return fmt.Errorf("failed to get if revert mode is executed, error: %v", err)
 	}
 
-	if f.wipL2Block != nil {
-		f.wipBatch.imStateRoot = f.wipL2Block.imStateRoot
-		// Subtract the WIP L2 block used resources to batch
-		overflow, overflowResource := f.wipBatch.imRemainingResources.Sub(state.BatchResources{ZKCounters: f.wipL2Block.usedZKCounters, Bytes: f.wipL2Block.bytes})
-		if overflow {
-			return fmt.Errorf("failed to subtract L2 block [%d] used resources to new wip batch %d, overflow resource: %s",
-				f.wipL2Block.trackingNum, f.wipBatch.batchNumber, overflowResource)
+	isExitMode, err := f.etherman.GetIsExitMode()
+	if err != nil {
+		return fmt.Errorf("failed to get if exit mode is executed, error: %v", err)
+	}
+
+	if processForcedBatches || !(isRevertMode || isExitMode) {
+		f.wipBatch, err = f.openNewWIPBatch(ctx, lastBatchNumber+1, stateRoot)
+
+		if err != nil {
+			log.Error("openNewWIPBatch() failed ", err)
+			return fmt.Errorf("failed to open new wip batch, error: %v", err)
 		}
+
+		if f.wipL2Block != nil {
+			f.wipBatch.imStateRoot = f.wipL2Block.imStateRoot
+			// Subtract the WIP L2 block used resources to batch
+			overflow, overflowResource := f.wipBatch.imRemainingResources.Sub(state.BatchResources{ZKCounters: f.wipL2Block.usedZKCounters, Bytes: f.wipL2Block.bytes})
+			if overflow {
+				return fmt.Errorf("failed to subtract L2 block [%d] used resources to new wip batch %d, overflow resource: %s",
+					f.wipL2Block.trackingNum, f.wipBatch.batchNumber, overflowResource)
+			}
+		}
+
+		log.Infof("new WIP batch %d", f.wipBatch.batchNumber)
+
+		return nil
+	} else {
+		return fmt.Errorf("failed to process a new forced batch in exit or revert mode")
 	}
-
-	log.Infof("new WIP batch %d", f.wipBatch.batchNumber)
-
-	return nil
+	// end Rollback code
 }
 
 // openNewWIPBatch opens a new batch in the state and returns it as WipBatch

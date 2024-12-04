@@ -59,13 +59,21 @@ func (g *ProcessorL1SequenceBatchesElderberry) Process(ctx context.Context, orde
 
 	sbatch := l1Block.SequencedBatches[order.Pos][0]
 
+	//log.Infof(sbatch.ForcedTimestamp);
+
 	executionTime := l1Block.ReceivedAt
-	log.Warnf("elderberry execution time: %v", executionTime)
+	log.Infof("executionTime prev: %v", executionTime)
+	//log.Warnf("elderberry execution time: %v", executionTime)
 	if sbatch.SequencedBatchElderberryData == nil {
 		log.Warnf("No elderberry sequenced batch data for batch %d", sbatch.BatchNumber)
+		executionTime = time.Unix(int64(sbatch.PolygonRollupBaseEtrogBatchData.ForcedTimestamp), 0)
+		log.Infof("enter Elderberry Null %v", executionTime)
 	} else {
 		executionTime = time.Unix(int64(sbatch.SequencedBatchElderberryData.MaxSequenceTimestamp), 0)
 	}
 
+	log.Infof("executionTime post: %v", executionTime)
+
 	return g.previousProcessor.ProcessSequenceBatches(ctx, l1Block.SequencedBatches[order.Pos], l1Block.BlockNumber, executionTime, dbTx)
+	// return g.previousProcessor.ProcessSequenceBatches(ctx, l1Block.SequencedBatches[order.Pos], l1Block.BlockNumber, time.Unix(l1Block.ReceivedAt.Unix(), 0), dbTx)
 }

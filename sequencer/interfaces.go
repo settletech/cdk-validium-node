@@ -36,7 +36,7 @@ type etherman interface {
 	GetLatestBatchNumber() (uint64, error)
 	GetLatestBlockNumber(ctx context.Context) (uint64, error)
 	HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error)
-	// Rollback code
+	// Rollback code - New functions to interact with the smart contracts
 	GetIsRevertBatchesExecuted() (bool, error)
 	GetIsExitMode() (bool, error)
 	GetLastAccInputHash() (common.Hash, error)
