@@ -11,8 +11,33 @@ OPTIONS_SEQUENCE_SENDER="--network custom --custom-network-file ../../../../src/
 PROGRAM="../../cmd"
 
 #go run $PROGRAM $COMMAND $OPTIONS # RUN
-dlv debug $PROGRAM --headless --listen=:2345 --api-version=2 -- $COMMAND $OPTIONS_SYNCHRONIZER # DEBUG
+dlv debug $PROGRAM --headless --listen=:2346 --api-version=2 -- $COMMAND $OPTIONS_SYNCHRONIZER # DEBUG
 
 
 # ARCHIVE
 #go run -ldflags "$LDFLAGS" $PROGRAM $COMMAND $OPTIONS # RUN
+
+# Vs Launchers
+# {
+#     "version": "0.2.0",
+#     "configurations": [
+#         {
+#             "name": "Launch",
+#             "type": "go",
+#             "request": "attach",
+#             "mode": "remote",
+#             "port": 2345,
+#             "host": "127.0.0.1",
+#             "showLog": true
+#         },
+#         {
+#             "name": "Launch2",
+#             "type": "go",
+#             "request": "attach",
+#             "mode": "remote",
+#             "port": 2346,
+#             "host": "127.0.0.1",
+#             "showLog": true
+#         }
+#     ]
+# }

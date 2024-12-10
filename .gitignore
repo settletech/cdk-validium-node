@@ -31,3 +31,5 @@ coverage.out
 db/db-packr.go
 db/packrd/
 packrd/
+
+__debug_bin*
