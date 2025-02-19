@@ -1,4 +1,4 @@
-GOBIN=/home/nachofq/Documents/Settle/plasma/repos/plasma-research/submodules/cdk-validium-node/dist 
+GOBIN=/home/ifquesada/Documents/plasma/plasma-res-new/plasma-research/submodules/cdk-validium-node/dist
 CGO_ENABLED=0 
 GOOS=linux 
 GOARCH=amd64 
@@ -11,8 +11,8 @@ OPTIONS_SYNCHRONIZER="--network custom --custom-network-file ../../../../src/kub
 OPTIONS_SEQUENCE_SENDER="--network custom --custom-network-file ../../../../src/kubernetes/deployData/contracts/output/genesis.json --cfg ../../../../src/kubernetes/deployData/infra/config/node.config.toml --components sequence-sender"
 OPTIONS_AGGREGATOR="--network custom --custom-network-file ../../../../src/kubernetes/deployData/contracts/output/genesis.json --cfg ../../../../src/kubernetes/deployData/infra/config/node.config.toml --components aggregator"
 
-#go run $PROGRAM $COMMAND $OPTIONS # RUN
-dlv debug $PROGRAM --headless --listen=:2346 --api-version=2 -- $COMMAND $OPTIONS_SEQUENCER # DEBUG
+# go run $PROGRAM $COMMAND $OPTIONS_AGGREGATOR # RUN
+dlv debug $PROGRAM --headless --listen=:2345 --api-version=2 -- $COMMAND $OPTIONS_AGGREGATOR # DEBUG
 
 
 # ARCHIVE

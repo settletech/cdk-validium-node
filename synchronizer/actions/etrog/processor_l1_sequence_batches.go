@@ -148,20 +148,22 @@ func (p *ProcessorL1SequenceBatchesEtrog) ProcessSequenceBatches(ctx context.Con
 			batch.ForcedBatchNum = &forcedBatches[0].ForcedBatchNumber
 			batch.GlobalExitRoot = sbatch.PolygonRollupBaseEtrogBatchData.ForcedGlobalExitRoot
 			// Rollback Code
-			tstampLimit := forcedBatches[0].ForcedAt
-			// tstampLimit := &l1BlockTimestamp
+			//tstampLimit := forcedBatches[0].ForcedAt
+			tstampLimit := l1BlockTimestamp
 			txs := forcedBatches[0].RawTxsData
 			// Rollback Code
 			var fBHL1 common.Hash = sbatch.PolygonRollupBaseEtrogBatchData.ForcedBlockHashL1
 			forcedBlockHashL1 = &fBHL1
 			// The leaves are no needed for forced batches
 			processCtx = state.ProcessingContextV2{
-				BatchNumber:          sbatch.BatchNumber,
-				Coinbase:             sbatch.SequencerAddr,
-				Timestamp:            &tstampLimit,
-				L1InfoRoot:           sbatch.PolygonRollupBaseEtrogBatchData.ForcedGlobalExitRoot,
-				BatchL2Data:          &txs,
-				ForcedBlockHashL1:    forcedBlockHashL1,
+				BatchNumber:       sbatch.BatchNumber,
+				Coinbase:          sbatch.SequencerAddr,
+				Timestamp:         &tstampLimit,
+				L1InfoRoot:        sbatch.PolygonRollupBaseEtrogBatchData.ForcedGlobalExitRoot,
+				BatchL2Data:       &txs,
+				ForcedBlockHashL1: forcedBlockHashL1,
+				ForcedBatchNum:    batch.ForcedBatchNum,
+				GlobalExitRoot:       batch.GlobalExitRoot,
 				SkipVerifyL1InfoRoot: 1,
 				ClosingReason:        state.SyncL1EventSequencedForcedBatchClosingReason,
 			}

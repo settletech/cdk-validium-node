@@ -1,5 +1,5 @@
 #!/bin/bash
-services=("execution-layer" "dbs-postgres" "dbs-redis" "prover" "rpc" "dac")
+services=("execution-layer" "dbs-postgres" "dbs-redis" "prover" "rpc" "dac" "aggregator")
 namespace="local"
 kubeconfig_path="/home/nachofq/.kube/config"
 

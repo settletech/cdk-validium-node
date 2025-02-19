@@ -501,38 +501,68 @@ func (s *ClientSynchronizer) Sync() error {
 				return err
 			}
 
-			if contractLastVerifiedBatchNumber < stateLastVerifiedBatch.BatchNumber && revertBatches {
-				blockNumberByBatch, err := s.state.GetBlockNumberByBatch(s.ctx, contractLastVerifiedBatchNumber, nil)
-				if err != nil {
-					log.Errorf("error stateGetBlockNumberByBatch: %v", err)
-					return err
-				}
+			isExitMode, err := s.etherMan.GetIsExitMode()
+			if err != nil {
+				return fmt.Errorf("failed to get if exit mode is executed, error: %v", err)
+			}
 
-				log.Infof("Rollback - lastVerifiedBatchNumberTemp: %d", blockNumberByBatch)
+			if contractLastVerifiedBatchNumber < stateLastVerifiedBatch.BatchNumber && revertBatches && !isExitMode {
+				blockNumber, err := s.state.GetBlockNumberByBatch(s.ctx, contractLastVerifiedBatchNumber, nil)
+				if err != nil {
+						log.Errorf("error stateGetBlockNumberByBatch: %v", err)
+						return err
+				}
+				log.Infof("Rollback - blockNumberByBatch: %d", blockNumber)
+				// Check reset state
 				/*err = s.resetState(blockNumberByBatch)
 				if err != nil {
-					log.Errorf("error lastVerifiedBatchNumberTemp err: %s", err.Error())
+						log.Errorf("error lastVerifiedBatchNumberTemp err: %s", err.Error())
 				} */
-
 				lastAccHash, err := s.etherMan.GetLastAccInputHash()
 				if err != nil {
-					log.Errorf("error getting: %s", err.Error())
+						log.Errorf("error getting: %s", err.Error())
 				}
-
+				log.Infof("Rollback - lastAccHash: %v", lastAccHash)
 				batchNumber, err := s.state.GetBatchNumberAccHash(s.ctx, lastAccHash, nil)
 				if err != nil {
-					log.Errorf("error getting batch number: %s", err.Error())
+						log.Errorf("error getting batch number: %s", err.Error())
 				}
-
+				log.Infof("Rollback - batchNumber: %v", batchNumber)
+				// Rollback DB - Begin Tx
+				dbTx, err := s.state.BeginStateTransaction(s.ctx)
+				if err != nil {
+						log.Error("error starting a db transaction to reset the state. Error: ", err)
+						return err
+				}
+				// Rollback Code -- Reset Batches
 				err = s.state.ResetBatches(s.ctx, batchNumber, dbTx)
 				if err != nil {
-					log.Errorf("error reseting batches err: %s", err.Error())
+						log.Errorf("error reseting batches err: %s", err.Error())
 				}
-
+				// Reorg and Commit
+				err = s.ethTxManager.Reorg(s.ctx, blockNumber+1, dbTx)
+				if err != nil {
+						rollbackErr := dbTx.Rollback(s.ctx)
+						if rollbackErr != nil {
+								log.Errorf("error rolling back eth tx manager when reorg detected. BlockNumber: %d, rollbackErr: %s, error : %v", blockNumber, rollbackErr.Error(), err)
+								return rollbackErr
+						}
+						log.Error("error processing reorg on eth tx manager. Error: ", err)
+						return err
+				}
+				err = dbTx.Commit(s.ctx)
+				if err != nil {
+						rollbackErr := dbTx.Rollback(s.ctx)
+						if rollbackErr != nil {
+								log.Errorf("error rolling back state to store block. BlockNumber: %d, rollbackErr: %s, error : %v", blockNumber, rollbackErr.Error(), err)
+								return rollbackErr
+						}
+						log.Error("error committing the resetted state. Error: ", err)
+						return err
+				}
 				log.Infof("Rollback - Rollback done! lastAccHash: %v, batchNumber: %v", lastAccHash, batchNumber)
-
-			}
-			// End Rollback code
+		}
+		// End Rollback code
 
 			metrics.FullSyncIterationTime(time.Since(start))
 			log.Info("L1 state fully synchronized")
