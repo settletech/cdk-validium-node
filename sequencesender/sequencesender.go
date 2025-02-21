@@ -286,8 +286,9 @@ func (s *SequenceSender) getSequencesToSend(ctx context.Context) ([]types.Sequen
 			seq.GlobalExitRoot = forcedBatch.GlobalExitRoot
 			seq.ForcedBatchTimestamp = forcedBatch.ForcedAt.Unix()
 			seq.PrevBlockHash = fbL1Block.ParentHash
+			// Rollback code - Recovery
 			// Set sequence timestamps as the forced batch timestamp
-			// seq.LastL2BLockTimestamp = seq.ForcedBatchTimestamp
+			//seq.LastL2BLockTimestamp = seq.ForcedBatchTimestamp
 
 			////
 			lastL2Block, err := s.state.GetLastL2BlockByBatchNumber(ctx, currentBatchNumToSequence, nil)
@@ -299,9 +300,8 @@ func (s *SequenceSender) getSequencesToSend(ctx context.Context) ([]types.Sequen
 			}
 
 			// Get timestamp of the last L2 block in the sequence
-			seq.LastL2BLockTimestamp = lastL2Block.ReceivedAt.Unix()
-			////
-			//seq.LastL2BLockTimestamp = seq.ForcedBatchTimestamp
+			// seq.LastL2BLockTimestamp = lastL2Block.ReceivedAt.Unix()
+			seq.LastL2BLockTimestamp = seq.ForcedBatchTimestamp
 
 			//Rollback Code
 			sequences = append(sequences, seq)

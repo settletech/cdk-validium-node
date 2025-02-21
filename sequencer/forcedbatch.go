@@ -236,7 +236,7 @@ func (f *finalizer) checkForcedBatches(ctx context.Context) {
 	for {
 		time.Sleep(f.cfg.ForcedBatchesCheckInterval.Duration)
 		// Rollback code - Malicious Sequencer
-		/*result, err := f.etherman.GetIsRevertBatchesExecuted()
+		result, err := f.etherman.GetIsRevertBatchesExecuted()
 
 		if err != nil {
 			log.Infof("Rollback - Revert batches validation error!")
@@ -245,7 +245,7 @@ func (f *finalizer) checkForcedBatches(ctx context.Context) {
 
 		if !result {
 			continue
-		} */
+		}
 		//
 		//log.Info("Rollback In check Forced Batches: %v", result)
 

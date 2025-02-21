@@ -226,7 +226,7 @@ func (f *finalizer) closeAndOpenNewWIPBatch(ctx context.Context, closeReason sta
 		f.initWIPL2Block(ctx)
 	}
 	// Rollback code - Stop Batch Generation
-	isRevertMode, err := f.etherman.GetIsRevertModeActive()
+	/* isRevertMode, err := f.etherman.GetIsRevertModeActive()
 	if err != nil {
 		return fmt.Errorf("failed to get if revert mode is executed, error: %v", err)
 	}
@@ -236,30 +236,30 @@ func (f *finalizer) closeAndOpenNewWIPBatch(ctx context.Context, closeReason sta
 		return fmt.Errorf("failed to get if exit mode is executed, error: %v", err)
 	}
 
-	if processForcedBatches || !(isRevertMode || isExitMode) {
-		f.wipBatch, err = f.openNewWIPBatch(ctx, lastBatchNumber+1, stateRoot)
+	if processForcedBatches || !(isRevertMode || isExitMode) { */
+	f.wipBatch, err = f.openNewWIPBatch(ctx, lastBatchNumber+1, stateRoot)
 
-		if err != nil {
-			log.Error("openNewWIPBatch() failed ", err)
-			return fmt.Errorf("failed to open new wip batch, error: %v", err)
-		}
-
-		if f.wipL2Block != nil {
-			f.wipBatch.imStateRoot = f.wipL2Block.imStateRoot
-			// Subtract the WIP L2 block used resources to batch
-			overflow, overflowResource := f.wipBatch.imRemainingResources.Sub(state.BatchResources{ZKCounters: f.wipL2Block.usedZKCounters, Bytes: f.wipL2Block.bytes})
-			if overflow {
-				return fmt.Errorf("failed to subtract L2 block [%d] used resources to new wip batch %d, overflow resource: %s",
-					f.wipL2Block.trackingNum, f.wipBatch.batchNumber, overflowResource)
-			}
-		}
-
-		log.Infof("new WIP batch %d", f.wipBatch.batchNumber)
-
-		return nil
-	} else {
-		return fmt.Errorf("failed to process a new forced batch in exit or revert mode")
+	if err != nil {
+		log.Error("openNewWIPBatch() failed ", err)
+		return fmt.Errorf("failed to open new wip batch, error: %v", err)
 	}
+
+	if f.wipL2Block != nil {
+		f.wipBatch.imStateRoot = f.wipL2Block.imStateRoot
+		// Subtract the WIP L2 block used resources to batch
+		overflow, overflowResource := f.wipBatch.imRemainingResources.Sub(state.BatchResources{ZKCounters: f.wipL2Block.usedZKCounters, Bytes: f.wipL2Block.bytes})
+		if overflow {
+			return fmt.Errorf("failed to subtract L2 block [%d] used resources to new wip batch %d, overflow resource: %s",
+				f.wipL2Block.trackingNum, f.wipBatch.batchNumber, overflowResource)
+		}
+	}
+
+	log.Infof("new WIP batch %d", f.wipBatch.batchNumber)
+
+	return nil
+	/*} else {
+		return fmt.Errorf("failed to process a new forced batch in exit or revert mode")
+	} */
 	// end Rollback code
 }
 
