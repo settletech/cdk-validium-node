@@ -156,13 +156,13 @@ func (p *ProcessorL1SequenceBatchesEtrog) ProcessSequenceBatches(ctx context.Con
 			forcedBlockHashL1 = &fBHL1
 			// The leaves are no needed for forced batches
 			processCtx = state.ProcessingContextV2{
-				BatchNumber:       sbatch.BatchNumber,
-				Coinbase:          sbatch.SequencerAddr,
-				Timestamp:         &tstampLimit,
-				L1InfoRoot:        sbatch.PolygonRollupBaseEtrogBatchData.ForcedGlobalExitRoot,
-				BatchL2Data:       &txs,
-				ForcedBlockHashL1: forcedBlockHashL1,
-				ForcedBatchNum:    batch.ForcedBatchNum,
+				BatchNumber:          sbatch.BatchNumber,
+				Coinbase:             sbatch.SequencerAddr,
+				Timestamp:            &tstampLimit,
+				L1InfoRoot:           sbatch.PolygonRollupBaseEtrogBatchData.ForcedGlobalExitRoot,
+				BatchL2Data:          &txs,
+				ForcedBlockHashL1:    forcedBlockHashL1,
+				ForcedBatchNum:       batch.ForcedBatchNum,
 				GlobalExitRoot:       batch.GlobalExitRoot,
 				SkipVerifyL1InfoRoot: 1,
 				ClosingReason:        state.SyncL1EventSequencedForcedBatchClosingReason,

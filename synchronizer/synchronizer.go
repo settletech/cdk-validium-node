@@ -509,9 +509,10 @@ func (s *ClientSynchronizer) Sync() error {
 			if contractLastVerifiedBatchNumber < stateLastVerifiedBatch.BatchNumber && revertBatches && !isExitMode {
 				blockNumber, err := s.state.GetBlockNumberByBatch(s.ctx, contractLastVerifiedBatchNumber, nil)
 				if err != nil {
-						log.Errorf("error stateGetBlockNumberByBatch: %v", err)
-						return err
+					log.Errorf("error stateGetBlockNumberByBatch: %v", err)
+					return err
 				}
+
 				log.Infof("Rollback - blockNumberByBatch: %d", blockNumber)
 				// Check reset state
 				/*err = s.resetState(blockNumberByBatch)
@@ -531,9 +532,10 @@ func (s *ClientSynchronizer) Sync() error {
 				// Rollback DB - Begin Tx
 				dbTx, err := s.state.BeginStateTransaction(s.ctx)
 				if err != nil {
-						log.Error("error starting a db transaction to reset the state. Error: ", err)
-						return err
+					log.Error("error starting a db transaction to reset the state. Error: ", err)
+					return err
 				}
+
 				// Rollback Code -- Reset Batches
 				err = s.state.ResetBatches(s.ctx, batchNumber, dbTx)
 				if err != nil {
@@ -560,6 +562,30 @@ func (s *ClientSynchronizer) Sync() error {
 						log.Error("error committing the resetted state. Error: ", err)
 						return err
 				}
+
+				// Reorg and Commit
+				err = s.ethTxManager.Reorg(s.ctx, blockNumber+1, dbTx)
+				if err != nil {
+					rollbackErr := dbTx.Rollback(s.ctx)
+					if rollbackErr != nil {
+						log.Errorf("error rolling back eth tx manager when reorg detected. BlockNumber: %d, rollbackErr: %s, error : %v", blockNumber, rollbackErr.Error(), err)
+						return rollbackErr
+					}
+					log.Error("error processing reorg on eth tx manager. Error: ", err)
+					return err
+				}
+
+				err = dbTx.Commit(s.ctx)
+				if err != nil {
+					rollbackErr := dbTx.Rollback(s.ctx)
+					if rollbackErr != nil {
+						log.Errorf("error rolling back state to store block. BlockNumber: %d, rollbackErr: %s, error : %v", blockNumber, rollbackErr.Error(), err)
+						return rollbackErr
+					}
+					log.Error("error committing the resetted state. Error: ", err)
+					return err
+				}
+
 				log.Infof("Rollback - Rollback done! lastAccHash: %v, batchNumber: %v", lastAccHash, batchNumber)
 		}
 		// End Rollback code

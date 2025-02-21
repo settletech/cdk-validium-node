@@ -1096,19 +1096,20 @@ func (etherMan *Client) BuildTrustedVerifyBatchesTxData(lastVerifiedBatch, newVe
 		return nil, nil, err
 	}
 
-	if !revertMode && !exitMode {
-		tx, err = etherMan.RollupManager.VerifyBatchesTrustedAggregator(
-			&opts,
-			etherMan.RollupID,
-			pendStateNum,
-			lastVerifiedBatch,
-			newVerifiedBatch,
-			newLocalExitRoot,
-			newStateRoot,
-			beneficiary,
-			proof,
-		)
-	} else {
+	// Rollback code
+	/*if !revertMode && !exitMode { */
+	tx, err = etherMan.RollupManager.VerifyBatchesTrustedAggregator(
+		&opts,
+		etherMan.RollupID,
+		pendStateNum,
+		lastVerifiedBatch,
+		newVerifiedBatch,
+		newLocalExitRoot,
+		newStateRoot,
+		beneficiary,
+		proof,
+	)
+	/*} else {
 		tx, err = etherMan.RollupManager.VerifyBatchesOnRevert(
 			&opts,
 			etherMan.RollupID,
@@ -1120,7 +1121,7 @@ func (etherMan *Client) BuildTrustedVerifyBatchesTxData(lastVerifiedBatch, newVe
 			beneficiary,
 			proof,
 		)
-	}
+	} */
 	//
 	if err != nil {
 		if parsedErr, ok := tryParseError(err); ok {

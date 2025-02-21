@@ -616,7 +616,7 @@ func (f *finalizer) executeNewWIPL2Block(ctx context.Context) (*state.ProcessBat
 	}
 
 	if batchResponse.IsRomOOCError {
-		return nil, ErrProcessBatchOOC
+		return nil, ErrProcessBatch
 	}
 
 	return batchResponse, nil

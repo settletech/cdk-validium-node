@@ -245,7 +245,7 @@ func (f *finalizer) checkForcedBatches(ctx context.Context) {
 
 		if !result {
 			continue
-		} 
+		}
 		//
 		//log.Info("Rollback In check Forced Batches: %v", result)
 
