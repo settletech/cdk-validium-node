@@ -398,7 +398,7 @@ func (f *finalizer) finalizeBatches(ctx context.Context) {
 				return
 			}
 		} else {
-			time.Sleep(f.cfg.ForcedBatchesCheckInterval.Duration / 2)
+			time.Sleep(f.cfg.ForcedBatchesCheckInterval.Duration)
 		}
 
 	}

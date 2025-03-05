@@ -514,11 +514,6 @@ func (s *ClientSynchronizer) Sync() error {
 				}
 
 				log.Infof("Rollback - blockNumberByBatch: %d", blockNumber)
-				// Check reset state
-				/*err = s.resetState(blockNumberByBatch)
-				if err != nil {
-					log.Errorf("error lastVerifiedBatchNumberTemp err: %s", err.Error())
-				} */
 
 				lastAccHash, err := s.etherMan.GetLastAccInputHash()
 				if err != nil {
@@ -531,6 +526,7 @@ func (s *ClientSynchronizer) Sync() error {
 					log.Errorf("error getting batch number: %s", err.Error())
 				}
 				log.Infof("Rollback - batchNumber: %v", batchNumber)
+
 				// Rollback DB - Begin Tx
 				dbTx, err := s.state.BeginStateTransaction(s.ctx)
 				if err != nil {
@@ -546,6 +542,7 @@ func (s *ClientSynchronizer) Sync() error {
 
 				// Reorg and Commit
 				err = s.ethTxManager.Reorg(s.ctx, blockNumber+1, dbTx)
+				// err = s.ethTxManager.Reorg(s.ctx, blockNumber, dbTx)
 				if err != nil {
 					rollbackErr := dbTx.Rollback(s.ctx)
 					if rollbackErr != nil {
