@@ -1001,6 +1001,7 @@ func (etherMan *Client) sequenceBatches(opts bind.TransactOpts, sequences []ethm
 		return nil, err
 	}
 
+	log.Infof("Rollback - sequence batches DA msg: %d", dataAvailabilityMessage)
 	if !revertMode && !exitMode {
 		tx, err = etherMan.ZkEVM.SequenceBatchesValidium(&opts, batches, maxSequenceTimestamp, lastSequencedBatchNumber, l2Coinbase, dataAvailabilityMessage)
 		log.Infof("No exitMode %v, error: %v", tx, err)
@@ -1096,20 +1097,20 @@ func (etherMan *Client) BuildTrustedVerifyBatchesTxData(lastVerifiedBatch, newVe
 		return nil, nil, err
 	}
 
-	// Rollback code
-	/*if !revertMode && !exitMode { */
-	tx, err = etherMan.RollupManager.VerifyBatchesTrustedAggregator(
-		&opts,
-		etherMan.RollupID,
-		pendStateNum,
-		lastVerifiedBatch,
-		newVerifiedBatch,
-		newLocalExitRoot,
-		newStateRoot,
-		beneficiary,
-		proof,
-	)
-	/*} else {
+	// Rollback code - Verify Batches on exitMode
+	if !revertMode && !exitMode {
+		tx, err = etherMan.RollupManager.VerifyBatchesTrustedAggregator(
+			&opts,
+			etherMan.RollupID,
+			pendStateNum,
+			lastVerifiedBatch,
+			newVerifiedBatch,
+			newLocalExitRoot,
+			newStateRoot,
+			beneficiary,
+			proof,
+		)
+	} else {
 		tx, err = etherMan.RollupManager.VerifyBatchesOnRevert(
 			&opts,
 			etherMan.RollupID,
@@ -1121,7 +1122,7 @@ func (etherMan *Client) BuildTrustedVerifyBatchesTxData(lastVerifiedBatch, newVe
 			beneficiary,
 			proof,
 		)
-	} */
+	}
 	//
 	if err != nil {
 		if parsedErr, ok := tryParseError(err); ok {
@@ -1301,6 +1302,7 @@ func (etherMan *Client) sequencedBatchesEvent(ctx context.Context, vLog types.Lo
 	}
 
 	var sequences []SequencedBatch
+	log.Infof("Rollback - Etherman DA: %d", etherMan.da)
 	if sb.NumBatch != 1 {
 		methodId := tx.Data()[:4]
 		log.Debugf("MethodId: %s", common.Bytes2Hex(methodId))
@@ -1406,7 +1408,7 @@ func decodeSequencesElderberry(txData []byte, lastBatchNumber uint64, sequencer 
 	if err != nil {
 		return nil, err
 	}
-
+	log.Infof("Rollback - sending da Elderberry: %d", da)
 	return decodeSequencedBatches(smcAbi, txData, state.FORKID_ELDERBERRY, lastBatchNumber, sequencer, txHash, nonce, l1InfoRoot, da)
 }
 
@@ -1418,7 +1420,7 @@ func decodeSequencesEtrog(txData []byte, lastBatchNumber uint64, sequencer commo
 	if err != nil {
 		return nil, err
 	}
-
+	log.Infof("Rollback - sending da Etrog: %d", da)
 	return decodeSequencedBatches(smcAbi, txData, state.FORKID_ETROG, lastBatchNumber, sequencer, txHash, nonce, l1InfoRoot, da)
 }
 
@@ -1490,6 +1492,7 @@ func decodeSequencedBatches(smcAbi abi.ABI, txData []byte, forkID uint64, lastBa
 		}
 
 		return sequencedBatches, nil
+	// Rollback code - DA problem in revert/exit mode
 	case "sequenceBatchesValidium", "executeAllForcedTransactions":
 		var sequencesValidium []polygonzkevm.PolygonValidiumEtrogValidiumBatchData
 		err := json.Unmarshal(bytedata, &sequencesValidium)
@@ -1521,10 +1524,16 @@ func decodeSequencedBatches(smcAbi abi.ABI, txData []byte, forkID uint64, lastBa
 			batchNums = append(batchNums, bn)
 			hashes = append(hashes, validiumData.TransactionsHash)
 		}
+
+		log.Infof("Rollback - data availability msg: %d", dataAvailabilityMsg)
+
 		batchL2Data, err := da.GetBatchL2Data(batchNums, hashes, dataAvailabilityMsg)
+
+		log.Infof("Rollback - batchL2Data: %d, error : %d", batchL2Data, err)
 		if err != nil {
 			return nil, err
 		}
+
 		for i, bn := range batchNums {
 			s := polygonzkevm.PolygonRollupBaseEtrogBatchData{
 				Transactions:         batchL2Data[i],
